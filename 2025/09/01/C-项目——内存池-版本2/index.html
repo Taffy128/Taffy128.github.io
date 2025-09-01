@@ -1,0 +1,701 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>lzx's Blog | lzx's Blog</title><meta name="author" content="lzx"><meta name="copyright" content="lzx"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="C++项目——内存池_版本2 前置知识 自旋锁的概念 自旋锁是一种 轻量级的锁机制，用于实现线程同步。当一个线程尝试获取锁时，如果锁已经被其他线程占用，它不会进入阻塞状态，而是 不断尝试获取锁，直到成功。这种“忙等”行为就叫 “自旋”。 在**fetchRange**函数代码中的部分：   test_and_set()是 原子操作，它将locks_[index]设置为true，并返回锁的原始状态。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="lzx&#39;s Blog">
+<meta property="og:url" content="https://taffy128.github.io/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/index.html">
+<meta property="og:site_name" content="lzx&#39;s Blog">
+<meta property="og:description" content="C++项目——内存池_版本2 前置知识 自旋锁的概念 自旋锁是一种 轻量级的锁机制，用于实现线程同步。当一个线程尝试获取锁时，如果锁已经被其他线程占用，它不会进入阻塞状态，而是 不断尝试获取锁，直到成功。这种“忙等”行为就叫 “自旋”。 在**fetchRange**函数代码中的部分：   test_and_set()是 原子操作，它将locks_[index]设置为true，并返回锁的原始状态。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://taffy128.github.io/img/avatar.jpg">
+<meta property="article:published_time" content="2025-09-01T03:32:21.916Z">
+<meta property="article:modified_time" content="2025-09-01T03:32:08.974Z">
+<meta property="article:author" content="lzx">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://taffy128.github.io/img/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "url": "https://taffy128.github.io/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/",
+  "image": "https://taffy128.github.io/img/avatar.jpg",
+  "datePublished": "2025-09-01T03:32:21.916Z",
+  "dateModified": "2025-09-01T03:32:08.974Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "lzx",
+      "url": "https://taffy128.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://taffy128.github.io/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'lzx\'s Blog',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-color: #FFB6C1;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fas fa-folder-open"></i><span> 分类</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/categories/CS%20106L/"><span> CS 106L</span></a></li><li><a class="site-page child" href="/categories/%E5%85%AC%E5%BC%80%E8%AF%BE/"><span> 公开课</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">lzx's Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">lzx's Blog</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fas fa-folder-open"></i><span> 分类</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/categories/CS%20106L/"><span> CS 106L</span></a></li><li><a class="site-page child" href="/categories/%E5%85%AC%E5%BC%80%E8%AF%BE/"><span> 公开课</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">无标题</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-09-01T03:32:21.916Z" title="发表于 2025-09-01 11:32:21">2025-09-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-09-01T03:32:08.974Z" title="更新于 2025-09-01 11:32:08">2025-09-01</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1>C++项目——内存池_版本2</h1>
+<h2 id="前置知识">前置知识</h2>
+<h3 id="自旋锁的概念">自旋锁的概念</h3>
+<p>自旋锁是一种 <strong>轻量级的锁机制</strong>，用于实现线程同步。当一个线程尝试获取锁时，如果锁已经被其他线程占用，它不会进入阻塞状态，而是 <strong>不断尝试获取锁</strong>，直到成功。这种“忙等”行为就叫 “<strong>自旋</strong>”。</p>
+<p>在**<code>fetchRange</code>**函数代码中的部分：</p>
+<ul>
+<li>
+<p><code>test_and_set()</code>是 <strong>原子操作</strong>，它将<code>locks_[index]</code>设置为<strong>true</strong>，并返回锁的原始状态。</p>
+</li>
+<li>
+<p>如果返回值表示锁已经被占用（<code>true</code>），线程会继续尝试获取锁（自旋）。</p>
+</li>
+<li>
+<p>这种方式避免了线程切换的开销。</p>
+</li>
+</ul>
+<h4 id="自旋锁-vs-互斥锁">自旋锁 vs. 互斥锁</h4>
+<table>
+<thead>
+<tr>
+<th>自旋锁</th>
+<th>互斥锁</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>忙等，反复尝试获取锁</td>
+<td>阻塞，线程会被挂起</td>
+</tr>
+<tr>
+<td>适合锁持有时间很短的场景</td>
+<td>适合锁持有时间较长的场景</td>
+</tr>
+<tr>
+<td>无需操作系统上下文切换，性能高</td>
+<td>需要上下文切换，开销较大</td>
+</tr>
+</tbody>
+</table>
+<h2 id="项目框架">项目框架</h2>
+<h3 id="为什么实现了内存池版本1还要实现内存池版本2-？">为什么实现了内存池版本1还要实现内存池版本2 ？</h3>
+<p>因为版本1内存池的设计结构有一定的局限性，版本2选择了一种更加高性能和常用的内存池设计结构：<strong>三层缓存结构</strong>的内存池设计。</p>
+<h3 id="项目整体介绍">项目整体介绍</h3>
+<p>这个项目实现了一个高效的内存池，旨在优化内存分配和释放的性能，特别是在多线程环境下。内存池通过分层缓存架构来管理内存，主要包括以下三层：</p>
+<p>1. ThreadCache（线程本地缓存）</p>
+<ul>
+<li>
+<p>每个线程独立的内存缓存</p>
+</li>
+<li>
+<p>无锁操作，快速分配和释放</p>
+</li>
+<li>
+<p>减少线程间竞争，提高并发性能</p>
+</li>
+</ul>
+<p>2. CentralCache（中心缓存）</p>
+<ul>
+<li>管理多个线程共享的内存块</li>
+<li>通过自旋锁保护，确保线程安全</li>
+<li>批量从PageCache获取内存，分配给ThreadCache</li>
+</ul>
+<p>3. PageCache（页缓存）</p>
+<ul>
+<li>从操作系统获取大块内存</li>
+<li>将大块内存切分成小块，供CentralCache使用</li>
+<li>负责内存的回收和再利用</li>
+</ul>
+<h4 id="内存池架构图">内存池架构图</h4>
+<p><img src="/.io//Users/%E9%98%B3%E5%85%89%E7%94%B7%E5%AD%A9/Desktop/%E9%A1%B9%E7%9B%AE%E5%9B%BE%E7%89%87/%E4%BB%A3%E7%A0%81%E9%9A%8F%E6%83%B3%E5%BD%95%E5%86%85%E5%AD%98%E6%B1%A0%E6%9E%B6%E6%9E%84%E5%9B%BE.png" alt></p>
+<h4 id="执行流程图">执行流程图</h4>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">+----------------+</span><br><span class="line">|   应用请求内存   |</span><br><span class="line">+----------------+</span><br><span class="line">		|</span><br><span class="line">		v</span><br><span class="line">+----------------+</span><br><span class="line">|   ThreadCache  |</span><br><span class="line">|----------------|</span><br><span class="line">|   检查本地缓存   |</span><br><span class="line">|   有：直接分配   |</span><br><span class="line">| 无：请求Central |</span><br><span class="line">+----------------+ </span><br><span class="line">		|</span><br><span class="line">		v</span><br><span class="line">+----------------+</span><br><span class="line">|  CentralCache  |</span><br><span class="line">|----------------|</span><br><span class="line">|   检查共享缓存   |</span><br><span class="line">| 有：分配给Thread |</span><br><span class="line">|   无：请求Page   |</span><br><span class="line">+----------------+ </span><br><span class="line">		|</span><br><span class="line">		v</span><br><span class="line">+----------------+</span><br><span class="line">|   PageCache    |</span><br><span class="line">|----------------|</span><br><span class="line">|  从操作系统获取  |</span><br><span class="line">|   切分成小块    |</span><br><span class="line">|  返回给Central  |</span><br><span class="line">+----------------+ </span><br></pre></td></tr></table></figure>
+<h2 id="线程本地缓存-ThreadCache">线程本地缓存(ThreadCache)</h2>
+<h3 id="线程本地缓存介绍">线程本地缓存介绍</h3>
+<p>详细介绍一下ThreadCache的设计思路和实现原理</p>
+<h3 id="1-ThreadCache的定义">1.ThreadCache的定义</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">pragma</span> once</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;Common.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> memoryPool&#123;</span><br><span class="line">    <span class="comment">//线程本地缓存</span></span><br><span class="line">    <span class="keyword">class</span> <span class="title class_">ThreadCache</span>&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="function"><span class="type">static</span> ThreadCache* <span class="title">getInstance</span><span class="params">()</span></span>&#123;</span><br><span class="line">            <span class="comment">//用于修饰变量，告诉线程对此关键词修饰的数据**进行本地存储**</span></span><br><span class="line">            <span class="type">static</span> <span class="keyword">thread_local</span> ThreadCache instance;</span><br><span class="line">            <span class="keyword">return</span> &amp;instance;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="function"><span class="type">void</span>* <span class="title">allocate</span><span class="params">(<span class="type">size_t</span> size)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">deallocate</span><span class="params">(<span class="type">void</span>* ptr,<span class="type">size_t</span> size)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="built_in">ThreadCache</span>()&#123;</span><br><span class="line">            <span class="comment">//初始化自由链表和大小统计</span></span><br><span class="line">            freeList_.<span class="built_in">fill</span>(<span class="literal">nullptr</span>);</span><br><span class="line">            freeListSize_.<span class="built_in">fill</span>(<span class="number">0</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//从中心缓存获取内存</span></span><br><span class="line">        <span class="function"><span class="type">void</span>* <span class="title">fetchFromCentralCache</span><span class="params">(<span class="type">size_t</span> index)</span></span>;</span><br><span class="line">        <span class="comment">//归还内存到中心缓存</span></span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">returnToCentralCache</span><span class="params">(<span class="type">void</span>* start,<span class="type">size_t</span> size,<span class="type">size_t</span> bytes)</span></span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">shouldReturnToCentralCache</span><span class="params">(<span class="type">size_t</span> index)</span></span>;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="comment">//每个线程的自由链表数组</span></span><br><span class="line">        std::array&lt;<span class="type">void</span>*,FREE_LIST_SIZE&gt; freeList_;</span><br><span class="line">        std::array&lt;<span class="type">size_t</span>, FREE_LIST_SIZE&gt; freeListSize_; <span class="comment">// 自由链表大小统计</span></span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>线程本地缓存的数据结构<code>freeList_</code>可视化展示</p>
+<p><img src="/.io//Users/%E9%98%B3%E5%85%89%E7%94%B7%E5%AD%A9/Desktop/%E9%A1%B9%E7%9B%AE%E5%9B%BE%E7%89%87/%E4%BB%A3%E7%A0%81%E9%9A%8F%E6%83%B3%E5%BD%95%E4%B8%AD%E5%BF%83%E7%BC%93%E5%AD%98%E7%9A%84%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84.png" alt></p>
+<p>关键设计点：</p>
+<ul>
+<li>使用<code>thread_local</code>确保每个线程独立实例</li>
+<li>自由链表数组管理不同大小的内存块</li>
+<li>单例模式简化访问</li>
+</ul>
+<h3 id="代码解释">代码解释</h3>
+<p><strong><code>therad_local</code></strong>：用于修饰变量，告诉线程对此关键词修饰的数据<strong>进行本地存储</strong>，使用上与<code>static</code>、<code>extern</code>关键字不冲突</p>
+<p>把<strong>全局数据拷贝</strong>出一份自己使用，从进程内部所有线程共用变成<strong>线程内部私有</strong>。随后线程使用的变量就是这个<strong>备份数据</strong>，不再关心原全局数据的数值</p>
+<h3 id="2-内存分配实现">2.内存分配实现</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span>* <span class="title">ThreadCache::allocate</span><span class="params">(<span class="type">size_t</span> size)</span></span>&#123;</span><br><span class="line">    <span class="comment">//处理0个大小的分配请求</span></span><br><span class="line">        <span class="keyword">if</span>(size == <span class="number">0</span>)&#123;</span><br><span class="line">        size = ALIGNMENT;  <span class="comment">//至少分配一个对齐大小</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(size &gt; MAX_BYTES)&#123;</span><br><span class="line">        <span class="comment">//大对象直接从系统分配</span></span><br><span class="line">        <span class="keyword">return</span> <span class="built_in">malloc</span>(size);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//找到该数据对应的链表下标</span></span><br><span class="line">    <span class="type">size_t</span> index = SizeClass::<span class="built_in">getIndex</span>(size);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//更新对应内存块大小的自由链表大小</span></span><br><span class="line">    freeListSize_[index] --;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//检查线程本地自由链表</span></span><br><span class="line">    <span class="comment">//如果freeList_[index](对应内存块大小的链表)不为空，表示链表中有可用内存块</span></span><br><span class="line">    <span class="keyword">if</span>(<span class="type">void</span>* ptr == freeList_[index])&#123;</span><br><span class="line">        freeList_[index] = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(ptr);</span><br><span class="line">        <span class="keyword">return</span> ptr;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//如果线程本地自由链表为空，则从中心缓存获取一批内存</span></span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">fetchFromCentralCache</span>(index);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>优势：</p>
+<ul>
+<li>快速路径：直接从自由链表分配</li>
+<li>无锁操作：线程本地访问</li>
+<li>分级处理：大小内存分开处理</li>
+</ul>
+<h3 id="3-从中心缓存获取内存">3.从中心缓存获取内存</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span>* <span class="title">ThreadCache::fetchFromCentralCache</span><span class="params">(<span class="type">size_t</span> index)</span> </span>&#123;</span><br><span class="line">    <span class="comment">//从中心缓存批量获取内存</span></span><br><span class="line">    <span class="type">void</span>* start = CentralCache::<span class="built_in">getInstance</span>().<span class="built_in">fetchRange</span>(index);</span><br><span class="line">    <span class="keyword">if</span>(!start) <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//取第一个返回，其余放入自由链表</span></span><br><span class="line">    <span class="type">void</span>* result = start;</span><br><span class="line">    freeList_[index] = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(start);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//更新自由链表大小</span></span><br><span class="line">    <span class="type">size_t</span> batchNum = <span class="number">0</span>;</span><br><span class="line">    <span class="type">void</span>* current = start; <span class="comment">//从start开始遍历</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//计算内存块数量</span></span><br><span class="line">    <span class="keyword">while</span>(current != <span class="literal">nullptr</span>)&#123;</span><br><span class="line">        batchNum ++;</span><br><span class="line">        current = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(current);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//更新freeListSize_,增加获取的内存块数量</span></span><br><span class="line">    freeListSize_[index] += batchNum;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>设计考虑</p>
+<ul>
+<li>批量获取：减少与中心缓存的交互</li>
+<li>链表管理：维护空闲内存块链表</li>
+<li>延迟加载：按需从中心缓存获取</li>
+</ul>
+<h3 id="4-内存释放实现">4.内存释放实现</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">ThreadCache::deallocate</span><span class="params">(<span class="type">void</span>* ptr, <span class="type">size_t</span> size)</span></span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(size &gt; MAX_BYTES)&#123;</span><br><span class="line">        <span class="built_in">free</span>(ptr);</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="type">size_t</span> index = SizeClass::<span class="built_in">getIndex</span>(size);</span><br><span class="line"></span><br><span class="line">    <span class="comment">//插入到线程本地自由链表</span></span><br><span class="line">    <span class="comment">//freeList_[index]为空闲链表首地址</span></span><br><span class="line">    <span class="comment">//空闲链表中每个元素只用存指向下一个地址的指针，第一步将ptr指向下一个地址(当前链表的头)前插</span></span><br><span class="line">    <span class="comment">//第二部将头节点更新</span></span><br><span class="line">    *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(ptr) = freeList_[index];</span><br><span class="line">    freeList_[index] = ptr;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//更新自由链表大小</span></span><br><span class="line">    freeListSize_[index] ++;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//判断是否需要将部分内存回收给中心缓存</span></span><br><span class="line">    <span class="keyword">if</span>(<span class="built_in">shouldReturnToCentralCache</span>(index))&#123;</span><br><span class="line">        <span class="built_in">returnToCentralCache</span>(freeList_[index], size);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>特点：</p>
+<ul>
+<li>快速释放：直接插入线程本地缓存链表头部</li>
+<li>无锁操作：提高并发性能</li>
+<li>内存复用：减少系统调用</li>
+</ul>
+<h3 id="5-为什么这样实现">5.为什么这样实现</h3>
+<ol>
+<li>性能优化</li>
+</ol>
+<p>​		a. <code>thread_local</code>避免了线程间同步</p>
+<p>​		b. 自由链表提供<code>O(1)</code>的分配和释放</p>
+<p>​		c. 批量操作减少系统调用</p>
+<ol start="2">
+<li>内存管理</li>
+</ol>
+<p>​		a. 按大小分类管理，减少碎片</p>
+<p>​		b. 本地缓存提高复用率</p>
+<p>​		c. 分级结构便于拓展</p>
+<ol start="3">
+<li>并发处理</li>
+</ol>
+<p>​		a. 无锁设计提高并发性能</p>
+<p>​		b. 线程隔离减少竞争</p>
+<p>​		c. 批量操作提高吞吐量</p>
+<h3 id="6-在内存池中的作用">6.在内存池中的作用</h3>
+<ul>
+<li>作为第一级缓存，处理最频繁的内存请求</li>
+<li>减轻中心缓存的压力</li>
+<li>提供快速的内存分配和释放</li>
+<li>优化多线程性能</li>
+</ul>
+<p>这种实现方式使得<code>ThreadCache</code>成为了内存池的性能保证，特别适合：</p>
+<ol>
+<li>
+<p><strong>频繁的小内存</strong>分配/释放</p>
+</li>
+<li>
+<p><strong>多线程高并发</strong>场景</p>
+</li>
+<li>
+<p>对<strong>延迟敏感</strong>的应用</p>
+</li>
+<li>
+<p>需要<strong>高性能</strong>的系统</p>
+</li>
+</ol>
+<h3 id="中心缓存介绍">中心缓存介绍</h3>
+<h3 id="1-CentralCache的定义和作用">1.CentralCache的定义和作用</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">pragma</span> once</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;Common.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;mutex&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;unordered_map&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;array&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;atomic&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;chrono&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> memoryPool&#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 使用无锁的span信息存储</span></span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">SpanTracker</span>&#123;</span><br><span class="line">        std::atomic&lt;<span class="type">void</span>*&gt; spanAddr&#123;<span class="literal">nullptr</span>&#125;;</span><br><span class="line">        std::atomic&lt;<span class="type">size_t</span>&gt; numPages&#123;<span class="number">0</span>&#125;;</span><br><span class="line">        std::atomic&lt;<span class="type">size_t</span>&gt; blockCount&#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 用于追踪span中还有多少块是空闲的，如果所有块都空闲，则归还span给PageCache</span></span><br><span class="line">        std::atomic&lt;<span class="type">size_t</span>&gt; freeCount&#123;<span class="number">0</span>&#125;;</span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">class</span> <span class="title class_">CentralCache</span>&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="function"><span class="type">static</span> CentralCache&amp; <span class="title">getInstance</span><span class="params">()</span></span>&#123;</span><br><span class="line">            <span class="type">static</span> CentralCache instance;</span><br><span class="line">            <span class="keyword">return</span> instance;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="function"><span class="type">void</span>* <span class="title">fetchRange</span><span class="params">(<span class="type">size_t</span> index)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">returnRange</span><span class="params">(<span class="type">void</span>* start,<span class="type">size_t</span> size,<span class="type">size_t</span> bytes)</span></span>;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="comment">//相互释放所有原子指针为nullptr</span></span><br><span class="line">        <span class="built_in">CentralCache</span>()&#123;</span><br><span class="line">            <span class="keyword">for</span>(<span class="keyword">auto</span>&amp; ptr:centralFreeList_)&#123;</span><br><span class="line">                ptr.<span class="built_in">store</span>(<span class="literal">nullptr</span>,std::memory_order_relaxed);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//初始化所有锁</span></span><br><span class="line">            <span class="keyword">for</span>(<span class="keyword">auto</span>&amp; lock:locks_)&#123;</span><br><span class="line">                lock.<span class="built_in">clear</span>();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//从页缓存获取内存</span></span><br><span class="line">        <span class="function"><span class="type">void</span>* <span class="title">fetchFromPageCache</span><span class="params">(<span class="type">size_t</span> size)</span></span>;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">//获取span信息</span></span><br><span class="line">        <span class="function">SpanTracker* <span class="title">getSpanTracker</span><span class="params">(<span class="type">void</span>* blockAddr)</span></span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//更新span的空闲计数并检查是否可以归还</span></span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">updateSpanFreeCount</span><span class="params">(SpanTracker* tracker,<span class="type">size_t</span> newFreeBlocks,<span class="type">size_t</span> index)</span></span>;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="comment">//中心缓存的自由链表数组</span></span><br><span class="line">        std::array&lt;std::atomic&lt;<span class="type">void</span>*&gt;,FREE_LIST_SIZE&gt; centralFreeList_;</span><br><span class="line">        <span class="comment">//自旋锁数组，用于保护每个链表</span></span><br><span class="line">        std::array&lt;std::atomic_flag,FREE_LIST_SIZE&gt; locks_;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//使用数组存储span信息，避免map开销</span></span><br><span class="line">        std::array&lt;SpanTracker,1024&gt; SpanTrackers_;</span><br><span class="line">        std::atomic&lt;<span class="type">size_t</span>&gt; spanCount_&#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//延迟归还相关的成员变量</span></span><br><span class="line">        <span class="type">static</span> <span class="type">const</span> <span class="type">size_t</span> MAX_DELAY_COUNT = <span class="number">48</span>; <span class="comment">// 最大延迟计数</span></span><br><span class="line">        std::array&lt;std::atomic&lt;<span class="type">size_t</span>&gt;,FREE_LIST_SIZE&gt; delayCounts_; <span class="comment">// 每个大小的类的延迟计数</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">//用 steady_clock 记录的某个时刻</span></span><br><span class="line">        std::array&lt;std::chrono::steady_clock::time_point,FREE_LIST_SIZE&gt; lastReturnTimes_; <span class="comment">// 上次归还时间</span></span><br><span class="line">        <span class="type">static</span> <span class="type">const</span> std::chrono::milliseconds DELAY_INTERVAL; <span class="comment">// 延迟间隔</span></span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">shouldPerformDelayedReturn</span><span class="params">(<span class="type">size_t</span> index,<span class="type">size_t</span> currentCount,std::chrono::steady_clock::time_point currentTime)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">performDelayedReturn</span><span class="params">(<span class="type">size_t</span> index)</span></span>;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>主要作用：</p>
+<ul>
+<li>
+<p>作为<code>ThreadCache</code>和<code>PageCache</code>的中间层</p>
+</li>
+<li>
+<p>管理从<code>PageCache</code>获取的内存块</p>
+</li>
+<li>
+<p>为多个<code>ThreadCache</code>提供内存分配服务</p>
+</li>
+<li>
+<p>实现内存的跨线程复用</p>
+</li>
+</ul>
+<h3 id="代码解释-2">代码解释</h3>
+<ul>
+<li>
+<p><code>std::atomic</code>：<strong>为什么要用<code>std::atomic</code>？</strong></p>
+<ul>
+<li>多线程环境下，内存池的分配与释放可能同时发生。</li>
+<li>如果只是普通的 <code>size_t</code>，不同线程同时操作会有 <strong>数据竞争</strong>，导致计数错误。</li>
+<li>用 <code>std::atomic</code> 就可以保证：
+<ul>
+<li>读写操作是原子的，不会被打断。</li>
+<li>即使没有锁，多个线程更新这些计数器也能保持一致性。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><code>std::atomic_flag</code>：是C++标准库中的一个简单的原子布尔类型，它是一个<strong>最基本的原子类型</strong>，只能表示两种状态：设置（<code>true</code>）和清除（<code>false</code>）, 只能通过<code>clear()</code>和<code>test_and_set()</code>方法进行操作</p>
+<ul>
+<li>用途：</li>
+<li>1.<strong>实现简单的自旋锁（Spinlock）</strong>：<code>std::atomic_flag</code>可以用来实现一个<strong>简单的自旋锁</strong>（spinlock），它是一种基于忙等待的锁机制，适用于临界区较短的场景。</li>
+<li>2.<strong>轻量级同步机制</strong>：<code>std::atomic_flag</code>非常适合用于<strong>轻量级的线程同步</strong>，因为它不涉及复杂的内存顺序和复杂的原子操作。</li>
+</ul>
+</li>
+<li>
+<p><code>&lt;chrono&gt;</code> 库：<code>&lt;chrono&gt;</code> 是 C++11 引入的 <strong>时间库</strong>，主要提供三类东西：</p>
+<ul>
+<li>时钟（clock）：用于获取“当前时间”，常见的时钟：
+<ul>
+<li><code>std::chrono::system_clock</code>：系统实时时钟（可以转成日历时间，用于和真实世界同步）。</li>
+<li><code>std::chrono::steady_clock</code>：单调时钟，不会回拨（适合测量时间间隔）。</li>
+<li><code>std::chrono::high_resolution_clock</code>：高精度时钟（可能是前两个之一的别名）。</li>
+</ul>
+</li>
+<li>时间点（time_point）</li>
+<li>时间段（duration）</li>
+</ul>
+</li>
+<li>
+<p><code>std::chrono::milliseconds</code>：是 <strong>duration（时间段）的一种特化</strong>，表示等待多少秒再进行操作</p>
+</li>
+<li>
+<p><strong><code>store</code></strong>：修改包含的值。将包含的值替换为val。该操作是原子操作。</p>
+</li>
+<li>
+<p><strong><code>memory_order_relaxed</code></strong>：见下图</p>
+</li>
+</ul>
+<p><img src="/.io//Users/%E9%98%B3%E5%85%89%E7%94%B7%E5%AD%A9/Desktop/%E9%A1%B9%E7%9B%AE%E5%9B%BE%E7%89%87/store%E5%87%BD%E6%95%B0.png" alt></p>
+<h3 id="2-从中心缓存获取内存块返回给线程本地缓存">2.从中心缓存获取内存块返回给线程本地缓存</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span>* <span class="title">CentralCache::fetchRange</span><span class="params">(<span class="type">size_t</span> index)</span></span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 索引检查，当索引&gt;=FREE_LIST_SIZE时，说明申请内存过大应直接向系统申请</span></span><br><span class="line">        <span class="keyword">if</span>(index &gt;= FREE_LIST_SIZE)&#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 自旋锁保护</span></span><br><span class="line">        <span class="keyword">while</span>(locks_[index].<span class="built_in">test_and_set</span>(std::memory_order_acquire))&#123;</span><br><span class="line">            <span class="comment">// 添加线程让步，避免忙等待，避免过度消耗CPU</span></span><br><span class="line">            std::this_thread::<span class="built_in">yield</span>();</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="type">void</span>* result = <span class="literal">nullptr</span>;</span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            <span class="comment">// 尝试从中心缓存获取内存块</span></span><br><span class="line">            result = centralFreeList_[index].<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">            </span><br><span class="line">            <span class="keyword">if</span>(!result)&#123;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 如果中心缓存为空，从页缓存获取新的内存块</span></span><br><span class="line">                <span class="type">size_t</span> size = (index + <span class="number">1</span>) * ALIGNMENT;</span><br><span class="line">                result = <span class="built_in">fetchFromPageCache</span>(size);</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span>(!result)&#123;</span><br><span class="line">                    locks_[index].<span class="built_in">clear</span>(std::memory_order_release);</span><br><span class="line">                    <span class="keyword">return</span> <span class="literal">nullptr</span>;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 将获取的内存块切成小块</span></span><br><span class="line">                <span class="type">char</span>* start = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(result);</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 计算实际分配的页数</span></span><br><span class="line">                <span class="type">size_t</span> numPages = (size &lt;= SPAN_PAGES * PageCache::PAGE_SIZE) ?</span><br><span class="line">                                SPAN_PAGES : (size + PageCache::PAGE_SIZE - <span class="number">1</span>) / PageCache::PAGE_SIZE;</span><br><span class="line">            </span><br><span class="line">                <span class="comment">// 使用实际页数计算块数</span></span><br><span class="line">                <span class="type">size_t</span> blockNum = (numPages * PageCache::PAGE_SIZE) / size;</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span>(blockNum &gt; <span class="number">1</span>)&#123;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 确保至少有两个块才构建链表</span></span><br><span class="line">                    <span class="keyword">for</span>(<span class="type">size_t</span> i = <span class="number">1</span>;i&lt;blockNum; ++i)&#123;</span><br><span class="line">                        <span class="type">void</span>* current = start + (i - <span class="number">1</span>) * size;</span><br><span class="line">                        <span class="type">void</span>* next = start + i * size;</span><br><span class="line">                        *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(current) = next;</span><br><span class="line">                    &#125;</span><br><span class="line">                    *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(start + (blockNum - <span class="number">1</span>) * size) = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 保存result的下一个节点</span></span><br><span class="line">                    <span class="type">void</span>* next = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(result);</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 将result与链表断开</span></span><br><span class="line">                    *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(result) = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 更新中心缓存</span></span><br><span class="line">                    centralFreeList_[index].<span class="built_in">store</span>(next,std::memory_order_release);</span><br><span class="line"></span><br><span class="line">                    <span class="comment">// 使用无锁方式记录span信息</span></span><br><span class="line">                    <span class="comment">// 做记录是为了将中心缓存多余内存块归还给页缓存做准备。考虑点：</span></span><br><span class="line">                    <span class="comment">// 1.CentralCache 管理的是小块内存，这些内存可能不连续</span></span><br><span class="line">                    <span class="comment">// 2.PageCache 的 deallocateSpan 要求归还连续的内存</span></span><br><span class="line">                    <span class="type">size_t</span> trackerIndex = spanCount_++;</span><br><span class="line">                    <span class="keyword">if</span>(trackerIndex &lt; SpanTrackers_.<span class="built_in">size</span>())&#123;</span><br><span class="line">                        <span class="comment">// 在tackerIndex这个位置记录信息</span></span><br><span class="line">                        SpanTrackers_[trackerIndex].spanAddr.<span class="built_in">store</span>(start, std::memory_order_release);</span><br><span class="line">                        SpanTrackers_[trackerIndex].numPages.<span class="built_in">store</span>(numPages, std::memory_order_release);</span><br><span class="line">                        SpanTrackers_[trackerIndex].blockCount.<span class="built_in">store</span>(blockNum, std::memory_order_release); <span class="comment">// 共分配了blockNum个内存块</span></span><br><span class="line">                        SpanTrackers_[trackerIndex].freeCount.<span class="built_in">store</span>(blockNum - <span class="number">1</span>, std::memory_order_release); <span class="comment">// 第一个块result已被分配出去，所以初始空闲块数为blockNum - 1</span></span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span>&#123;</span><br><span class="line">                <span class="comment">// 保存result的下一个节点</span></span><br><span class="line">                <span class="type">void</span>* next = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(result);</span><br><span class="line">                <span class="comment">// 将result与链表断开</span></span><br><span class="line">                *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(result) = <span class="literal">nullptr</span>;</span><br><span class="line"></span><br><span class="line">                <span class="comment">// 更新中心缓存</span></span><br><span class="line">                centralFreeList_[index].<span class="built_in">store</span>(next,std::memory_order_release);</span><br><span class="line">                </span><br><span class="line">                <span class="comment">// 更新span的空闲计数</span></span><br><span class="line">                SpanTracker* tracker = <span class="built_in">getSpanTracker</span>(result);</span><br><span class="line">                <span class="keyword">if</span>(tracker)&#123;</span><br><span class="line">                    <span class="comment">// C++原子操作函数，用于原子地减少一个值，减少一个内存块</span></span><br><span class="line">                    tracker-&gt;freeCount.<span class="built_in">fetch_sub</span>(<span class="number">1</span>,std::memory_order_release);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">catch</span>(...)&#123;</span><br><span class="line">            locks_[index].<span class="built_in">clear</span>(std::memory_order_release);</span><br><span class="line">            <span class="keyword">throw</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//释放锁</span></span><br><span class="line">        locks_[index].<span class="built_in">clear</span>(std::memory_order_release);</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h3 id="代码解释-3">代码解释</h3>
+<ul>
+<li><code>locks_[index].test_and_set(std::memory_order_acquire)</code>：
+<ul>
+<li>原子地测试并设置锁标志位
+<ul>
+<li>如果锁已被占用，返回true；如果未被占用，设置锁并返回false</li>
+</ul>
+</li>
+<li><strong><code>std::memory_order_acquire</code></strong>：确保当前线程在执行后续操作之前，能够看到其他线程对同一原子变量的释放操作之前的所有修改</li>
+</ul>
+</li>
+<li><code>std::this_thread::yield()</code>：
+<ul>
+<li>让出当前线程的时间片，允许其他线程运行</li>
+<li>避免忙等待消耗过多CPU资源</li>
+</ul>
+</li>
+<li><code>try</code>：
+<ul>
+<li>C++异常处理机制的一部分，用于：
+<ul>
+<li><strong>捕获异常</strong>：以后后续的<code>catch</code>块配合，捕获可能抛出的异常</li>
+<li><strong>保护代码段</strong>：将可能抛出异常的代码包含在内</li>
+<li><strong>异常安全</strong>：确保在出现异常时能够正确处理，避免程序崩溃</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>load</code>：从原子变量中读取值的操作</li>
+<li><code>fetch_sub</code>：C++原子操作函数，用于原子地减少一个值</li>
+<li><code>catch(...)</code>：捕获所有类型的异常
+<ul>
+<li><code>throw</code>：重新抛出捕获的异常</li>
+</ul>
+</li>
+</ul>
+<h3 id="3-将线程本地缓存多余的内存块归还给中心缓存">3.将线程本地缓存多余的内存块归还给中心缓存</h3>
+<p>CentralCache提供给ThreadCache调用的接口</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">CentralCache::returnRange</span><span class="params">(<span class="type">void</span>* start,<span class="type">size_t</span> size,<span class="type">size_t</span> index)</span></span>&#123;</span><br><span class="line">        <span class="keyword">if</span>(!start || index &gt;= FREE_LIST_SIZE)&#123;</span><br><span class="line">            <span class="keyword">return</span> ;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="type">size_t</span> blockSize = (index + <span class="number">1</span>) * ALIGNMENT;</span><br><span class="line">        <span class="type">size_t</span> blockCount = size / blockSize;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 自旋锁保护</span></span><br><span class="line">        <span class="keyword">while</span>(locks_[index].<span class="built_in">test_and_set</span>(std::memory_order_acquire))&#123;</span><br><span class="line">            std::this_thread::<span class="built_in">yield</span>();</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        <span class="keyword">try</span>&#123;</span><br><span class="line">            <span class="comment">// 1.将归还的链表连接到中心缓存</span></span><br><span class="line">            <span class="type">void</span>* end = start;</span><br><span class="line">            <span class="type">size_t</span> count = <span class="number">1</span>;</span><br><span class="line">            <span class="comment">// 找到尾部</span></span><br><span class="line">            <span class="keyword">while</span>(*<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(end) != <span class="literal">nullptr</span> &amp;&amp; count &lt; blockCount)&#123;</span><br><span class="line">                end = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(end);</span><br><span class="line">                count++;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="type">void</span>* current = centralFreeList_[index].<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">            *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(end) = current; <span class="comment">// 头插法（将原有链表连在归还链表后面）</span></span><br><span class="line">            centralFreeList_[index].<span class="built_in">store</span>(start,std::memory_order_release);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 2,更新延迟计数</span></span><br><span class="line">            <span class="type">size_t</span> currentCount = delayCounts_[index].<span class="built_in">fetch_add</span>(<span class="number">1</span>,std::memory_order_relaxed) + <span class="number">1</span>;</span><br><span class="line">            <span class="keyword">auto</span> currentTime = std::chrono::steady_clock::<span class="built_in">now</span>();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 3.检查是否需要执行延迟归还</span></span><br><span class="line">            <span class="keyword">if</span>(<span class="built_in">shouldPerformDelayedReturn</span>(index,currentCount,currentTime))&#123;</span><br><span class="line">                <span class="built_in">performDelayedReturn</span>(index);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="built_in">catch</span>(...)&#123;</span><br><span class="line">            locks_[index].<span class="built_in">clear</span>(std::memory_order_release);</span><br><span class="line">            <span class="keyword">throw</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        locks_[index].<span class="built_in">clear</span>(std::memory_order_release);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>将<code>ThreadCache</code>中多余内存块归还给<code>CentralCache</code>之后，会进行检查是否需要归还内存块给<code>PageCache</code>。</p>
+<p>这里的检查归还总体经过两层：</p>
+<ul>
+<li>首先是<code>returnRange</code>调用次数(也就是<code>ThreadCache</code>归还内存给<code>CentralCache</code>次数)和时间的检查。</li>
+<li>其次，还要保证<code>CentralCache</code>中要归还的空闲内存块能够拼成完整的内存页（如分配时的内存页一样）。</li>
+</ul>
+<p>满足上述两个条件才将<code>CentralCache</code>中的对应空闲内存归还给<code>PageCache</code>。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 检查是否需要执行延迟归还</span></span><br><span class="line">    <span class="function"><span class="type">bool</span> <span class="title">CentralCache::shouldPerformDelayedReturn</span><span class="params">(<span class="type">size_t</span> index,<span class="type">size_t</span> currentCount,std::chrono::steady_clock::time_point currentTime)</span></span>&#123;</span><br><span class="line">        <span class="comment">// 基于计数和时间的双重检查</span></span><br><span class="line">        <span class="keyword">if</span>(currentCount &gt;= MAX_DELAY_COUNT)&#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">auto</span> lastTime = lastReturnTimes_[index];</span><br><span class="line">        <span class="keyword">return</span> (currentTime - lastTime) &gt;= DELAY_INTERVAL;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 执行延迟归还</span></span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">CentralCache::performDelayedReturn</span><span class="params">(<span class="type">size_t</span> index)</span></span>&#123;</span><br><span class="line">        <span class="comment">// 重置延迟计数</span></span><br><span class="line">        delayCounts_[index].<span class="built_in">store</span>(<span class="number">0</span>,std::memory_order_relaxed);</span><br><span class="line">        <span class="comment">// 更新最后归还时间</span></span><br><span class="line">        lastReturnTimes_[index] = std::chrono::steady_clock::<span class="built_in">now</span>();</span><br><span class="line">    </span><br><span class="line">        <span class="comment">// 统计每个span的空闲块数</span></span><br><span class="line">        std::unordered_map&lt;SpanTracker*,<span class="type">size_t</span>&gt; spanFreeCounts;</span><br><span class="line">        <span class="type">void</span>* currentBlock = centralFreeList_[index].<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">    </span><br><span class="line">        <span class="keyword">while</span>(currentBlock)&#123;</span><br><span class="line">            SpanTracker* tracker = <span class="built_in">getSpanTracker</span>(currentBlock);</span><br><span class="line">            <span class="keyword">if</span>(tracker)&#123;</span><br><span class="line">                spanFreeCounts[tracker]++;</span><br><span class="line">            &#125;</span><br><span class="line">            currentBlock = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(currentBlock);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 更新每个span的空闲计数并检查是否可以归还</span></span><br><span class="line">        <span class="keyword">for</span>(<span class="type">const</span> <span class="keyword">auto</span>&amp; [tracker,newFreeBlocks] : spanFreeCounts)&#123;</span><br><span class="line">            <span class="built_in">updateSpanFreeCount</span>(tracker,newFreeBlocks,index);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">CentralCache::updateSpanFreeCount</span><span class="params">(SpanTracker* tracker,<span class="type">size_t</span> newFreeBlocks,<span class="type">size_t</span> index)</span></span>&#123;</span><br><span class="line">        <span class="type">size_t</span> oldFreeCount = tracker-&gt;freeCount.<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">        <span class="type">size_t</span> newFreeCount = oldFreeCount + newFreeBlocks;</span><br><span class="line">        tracker-&gt;freeCount.<span class="built_in">store</span>(newFreeBlocks,std::memory_order_release);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 如果所有块都空闲，归还span</span></span><br><span class="line">        <span class="keyword">if</span>(newFreeCount == tracker-&gt;blockCount.<span class="built_in">load</span>(std::memory_order_relaxed))&#123;</span><br><span class="line">            <span class="type">void</span>* spanAddr = tracker-&gt;spanAddr.<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">            <span class="type">size_t</span> numPages = tracker-&gt;numPages.<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 从自由链表中移除这些块</span></span><br><span class="line">            <span class="type">void</span>* head = centralFreeList_[index].<span class="built_in">load</span>(std::memory_order_relaxed);</span><br><span class="line">            <span class="type">void</span>* newHead = <span class="literal">nullptr</span>;</span><br><span class="line">            <span class="type">void</span>* prev = <span class="literal">nullptr</span>;</span><br><span class="line">            <span class="type">void</span>* current = head;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">while</span>(current)&#123;</span><br><span class="line">                <span class="type">void</span>* next = *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(current);</span><br><span class="line">                <span class="comment">// 当前指针在需要删除的页范围内</span></span><br><span class="line">                <span class="keyword">if</span>(current &gt;= spanAddr &amp;&amp;</span><br><span class="line">                    current &lt; <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(spanAddr) + numPages * PageCache::PAGE_SIZE)&#123;</span><br><span class="line">                    <span class="comment">// 如果当前current不是需要删除的页的起始位置</span></span><br><span class="line">                    <span class="comment">// prev != nullptr</span></span><br><span class="line">                    <span class="keyword">if</span>(prev)&#123;</span><br><span class="line">                        <span class="comment">// prev指向next，把current跳过，因为current需要删除</span></span><br><span class="line">                        *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(prev) = next;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">else</span>&#123;</span><br><span class="line">                        <span class="comment">// newHead指向next，把current跳过，因为current需要删除</span></span><br><span class="line">                        newHead = next;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="comment">// 如果current是不需要删除的，直接跳过</span></span><br><span class="line">                <span class="keyword">else</span>&#123;</span><br><span class="line">                    </span><br><span class="line">                    prev = current;</span><br><span class="line">                &#125;</span><br><span class="line">                current = next;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            centralFreeList_[index].<span class="built_in">store</span>(newHead,std::memory_order_release);</span><br><span class="line">            PageCache::<span class="built_in">getInstance</span>().<span class="built_in">deallocateSpan</span>(spanAddr,numPages);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h3 id="4-设计特点">4.设计特点</h3>
+<ol>
+<li>批量管理</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="type">size_t</span> SPAN_PAGES = <span class="number">8</span>;</span><br></pre></td></tr></table></figure>
+<p>原因：</p>
+<ul>
+<li>减少向PageCache的请求次数</li>
+<li>提高内存分配效率</li>
+<li>降低锁竞争</li>
+</ul>
+<ol start="2">
+<li>细粒度锁</li>
+</ol>
+<ul>
+<li>减少线程竞争</li>
+<li>提高并发性能</li>
+<li>避免全局锁的性能瓶颈</li>
+</ul>
+<h3 id="5-工作流程">5.工作流程</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 1. ThreadCache请求内存</span></span><br><span class="line"><span class="function"><span class="type">void</span>* <span class="title">ThreadCache::fetchFromCentralCache</span><span class="params">(<span class="type">size_t</span> index)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> CentralCache::<span class="built_in">getInstance</span>().<span class="built_in">fetchRange</span>(index);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 2. CentralCache处理请求</span></span><br><span class="line"><span class="function"><span class="type">void</span>* <span class="title">CentralCache::fetchRange</span><span class="params">(<span class="type">size_t</span> index)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 如果centralFreeList_中有可用内存</span></span><br><span class="line">    <span class="keyword">if</span> (result = centralFreeList_[index].<span class="built_in">load</span>()) &#123;</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 否则从PageCache获取新内存</span></span><br><span class="line">    result = <span class="built_in">fetchFromPageCache</span>(size);</span><br><span class="line">    <span class="comment">// 切分并构建链表</span></span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 3. 内存回收</span></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">CentralCache::returnRange</span><span class="params">(<span class="type">void</span>* start, <span class="type">size_t</span> size, <span class="type">size_t</span> index)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 将内存块插入到对应的自由链表</span></span><br><span class="line">    *<span class="built_in">reinterpret_cast</span>&lt;<span class="type">void</span>**&gt;(start) = centralFreeList_[index].<span class="built_in">load</span>();</span><br><span class="line">    centralFreeList_[index].<span class="built_in">store</span>(start);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="6-为什么这么设计">6.为什么这么设计</h3>
+<ol>
+<li>三级缓存的必要性</li>
+</ol>
+<ul>
+<li>ThreadCache：无锁，快速分配</li>
+<li>CentralCache：平衡点，内存复用</li>
+<li>PageCache：系统对接，大块管理</li>
+</ul>
+<ol start="2">
+<li>批量处理的优势</li>
+</ol>
+<ul>
+<li>减少锁竞争</li>
+<li>提高缓存命中率</li>
+<li>降低系统调用开销</li>
+</ul>
+<ol start="3">
+<li>内存规格管理</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">size_t</span> size = (index + <span class="number">1</span>) * ALIGNMENT; <span class="comment">// 8字节对齐</span></span><br></pre></td></tr></table></figure>
+<p>原因：</p>
+<ul>
+<li>减少内存碎片</li>
+<li>提高内存利用率</li>
+<li>简化管理逻辑</li>
+</ul>
+<p>性能考虑</p>
+<ul>
+<li>
+<p>空间效率：批量申请和释放</p>
+</li>
+<li>
+<p>时间效率：细粒度锁和原子操作</p>
+</li>
+<li>
+<p>并发性能：多线程友好设计</p>
+</li>
+<li>
+<p>缓存友好：连续内存布局</p>
+</li>
+</ul>
+<p>这种设计在以下场景特别有效：</p>
+<ul>
+<li>高并发应用</li>
+<li>频繁的内存分配/释放</li>
+<li>多线程环境</li>
+<li>对性能要求高的系统</li>
+</ul>
+<p><code>CentralCache</code>的实现体现了内存管理中&quot;平衡&quot;的思想，在效率、并发性、复杂度等多个维度之间取得了很好的平衡。</p>
+<h3 id="页缓存介绍">页缓存介绍</h3>
+<h3 id="1-PageCache的定位和职责">1.PageCache的定位和职责</h3>
+<p>PageCache是内存池中的大块内存管理器，主要负责：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">PageCache</span>&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="type">static</span> <span class="type">const</span> <span class="type">size_t</span> PAGE_SIZE = <span class="number">4096</span>;<span class="comment">//4K页大小</span></span><br><span class="line">        <span class="function"><span class="type">static</span>  PageCache&amp; <span class="title">getInstance</span><span class="params">()</span></span>&#123;</span><br><span class="line">            <span class="type">static</span> PageCache instance;</span><br><span class="line">            <span class="keyword">return</span> instance;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="comment">//分配指定页数的span</span></span><br><span class="line">        <span class="function"><span class="type">void</span>* <span class="title">allocateSpan</span><span class="params">(<span class="type">size_t</span> numPages)</span></span>;</span><br><span class="line">        <span class="comment">//释放span</span></span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">deallocateSpan</span><span class="params">(<span class="type">void</span>* ptr,<span class="type">size_t</span> numPages)</span></span>;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="built_in">PagesCache</span>() = <span class="keyword">default</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//向系统申请内存</span></span><br><span class="line">        <span class="function"><span class="type">void</span>* <span class="title">systemAlloc</span><span class="params">(<span class="type">size_t</span> numPages)</span></span>;</span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="keyword">struct</span> <span class="title class_">Span</span>&#123;</span><br><span class="line">            <span class="type">void</span>* pageAddr; <span class="comment">//页起始位置</span></span><br><span class="line">            <span class="type">size_t</span> numPages; <span class="comment">//页数</span></span><br><span class="line">            Span* next; <span class="comment">//链表指针</span></span><br><span class="line">        &#125;;</span><br><span class="line">        <span class="comment">//核心数据结构</span></span><br><span class="line">        <span class="comment">//页数(numPages) -&gt; 链表指针(Span*)</span></span><br><span class="line">        std::map&lt;<span class="type">size_t</span>,Span*&gt; freeSpans_;</span><br><span class="line">        <span class="comment">//分配内存地址(pageAddr) -&gt; 链表指针(Span*)</span></span><br><span class="line">        std::map&lt;<span class="type">void</span>*,Span*&gt; spanMap_; <span class="comment">//管理已分配内存，用于内存回收</span></span><br><span class="line">        std::mutex mutex_;</span><br><span class="line">    &#125;;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>系统内存申请</li>
+</ol>
+<ul>
+<li>直接与操作系统交互，通过mmap申请大块内存</li>
+<li>以页(4KB)为单位进行内存管理</li>
+<li>充当内存池与操作系统之间的桥梁</li>
+</ul>
+<ol start="2">
+<li>大块内存管理</li>
+</ol>
+<ul>
+<li>管理和组织空闲的内存页</li>
+<li>处理内存的分配和回收</li>
+<li>实现内存页的合并和分割</li>
+</ul>
+<h3 id="2-核心功能实现">2.核心功能实现</h3>
+<ol>
+<li>内存分配流程</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span>* <span class="title">PageCache::allocateSpan</span><span class="params">(<span class="type">size_t</span> numPages)</span></span>&#123;</span><br><span class="line">        <span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 1.查找合适的空闲span</span></span><br><span class="line">        <span class="comment">// lower_bound函数返回第一个&gt;=numPages的元素的迭代器</span></span><br><span class="line">        <span class="keyword">auto</span> it = freeSpans_.<span class="built_in">lower_bound</span>(numPages);</span><br><span class="line">        <span class="keyword">if</span>(it != freeSpans_.<span class="built_in">end</span>())&#123;</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// 2.如果span&gt;需要的numPages则进行分割</span></span><br><span class="line">            <span class="keyword">if</span>(span-&gt;numPages &gt; numPages)&#123;</span><br><span class="line">                <span class="comment">//分割出需要的页数，剩余超出的部分放回空闲列表</span></span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> span-&gt;pageAddr;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3.没有合适的span，向系统申请</span></span><br><span class="line">        <span class="type">void</span>* memory = <span class="built_in">systemAlloc</span>(numPages);</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol start="2">
+<li>内存回收流程</li>
+</ol>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">PageCache::deallocateSpan</span><span class="params">(<span class="type">void</span>* ptr, <span class="type">size_t</span> numPages)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// 1. 查找要释放的span</span></span><br><span class="line">    <span class="keyword">auto</span> it = spanMap_.<span class="built_in">find</span>(ptr);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 尝试与相邻的空闲span合并</span></span><br><span class="line">    <span class="type">void</span>* nextAddr = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(ptr) + numPages * PAGE_SIZE;</span><br><span class="line">    <span class="keyword">auto</span> nextIt = spanMap_.<span class="built_in">find</span>(nextAddr);</span><br><span class="line">    <span class="keyword">if</span> (nextIt != spanMap_.<span class="built_in">end</span>())</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// 合并相邻的span</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 将合并后的span放入空闲列表</span></span><br><span class="line">    <span class="keyword">auto</span>&amp; list = freeSpans_[span-&gt;numPages];</span><br><span class="line">    span-&gt;next = list;</span><br><span class="line">    list = span;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="3-在内存池中的作用">3.在内存池中的作用</h3>
+<ol>
+<li>内存层次结构中的角色</li>
+</ol>
+<ul>
+<li>作为最上层的内存管理单元</li>
+<li>为下层的ThreadCache和CentralCache提供内存资源</li>
+<li>管理大块内存的分配和回收</li>
+</ul>
+<ol start="2">
+<li>性能优化</li>
+</ol>
+<ul>
+<li>减少系统调用次数</li>
+<li>通过内存复用降低申请开销</li>
+<li>通过合并相邻内存块减少内存碎片</li>
+</ul>
+<ol start="3">
+<li>资源管理</li>
+</ol>
+<ul>
+<li>统一管理系统层面的内存资源</li>
+<li>实现内存的按需分配和动态拓展</li>
+<li>提供内存回收和复用机制</li>
+</ul>
+<h3 id="数据定义">数据定义</h3>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">pragma</span> once</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;cstddef&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;atomic&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;array&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">namespace</span> memoryPool&#123;</span><br><span class="line">    <span class="comment">//对齐数和大小定义</span></span><br><span class="line">    <span class="keyword">constexpr</span> <span class="type">size_t</span> ALIGNMENT = <span class="number">8</span>;</span><br><span class="line">    <span class="keyword">constexpr</span> <span class="type">size_t</span> MAX_BYTES = <span class="number">256</span> * <span class="number">1024</span>; <span class="comment">//256kb</span></span><br><span class="line">    <span class="keyword">constexpr</span> <span class="type">size_t</span> FREE_LIST_SIZE = MAX_BYTES / ALIGNMENT; <span class="comment">//ALIGNMENT等于指针void* 的大小</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//内存块头部信息</span></span><br><span class="line">    <span class="keyword">struct</span> <span class="title class_">BlockHeader</span>&#123;</span><br><span class="line">        <span class="type">size_t</span> size; <span class="comment">//内存块大小</span></span><br><span class="line">        <span class="type">bool</span> inUse; <span class="comment">//使用标记</span></span><br><span class="line">        BlockHeader* next; <span class="comment">//指向下一个内存块</span></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//大小类管理</span></span><br><span class="line">    <span class="keyword">class</span> <span class="title class_">SizeClass</span>&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="function"><span class="type">static</span> <span class="type">size_t</span> <span class="title">roundUp</span><span class="params">(<span class="type">size_t</span> bytes)</span></span>&#123;</span><br><span class="line">            <span class="keyword">return</span> (bytes + ALIGNMENT - <span class="number">1</span>) &amp; ~ (ALIGNMENT - <span class="number">1</span>);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="function"><span class="type">static</span> <span class="type">size_t</span> <span class="title">getIndex</span><span class="params">(<span class="type">size_t</span> bytes)</span></span>&#123;</span><br><span class="line">            <span class="comment">//确保bytes至少为ALIGNMENT</span></span><br><span class="line">            bytes = std::<span class="built_in">max</span>(bytes,ALIGNMENT);</span><br><span class="line">            <span class="comment">//向上取整后-1</span></span><br><span class="line">            <span class="keyword">return</span> (bytes + ALIGNMENT - <span class="number">1</span>) / ALIGNMENT - <span class="number">1</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong><code>constexpr</code></strong>：是指值不会改变并且<strong>在编译过程就能得到计算结果</strong>的表达式。声明为constexpr的变量一定是一个const变量，而且必须用常量表达式初始化</p>
+<h2 id="项目细节思考">项目细节思考</h2>
+<h4 id="为什么页缓存回收内存时要尝试合并">为什么页缓存回收内存时要尝试合并?</h4>
+<p>合并相邻的<code>span</code>代码实现：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">PageCache::deallocateSpan</span><span class="params">(<span class="type">void</span>* ptr,<span class="type">size_t</span> numPages)</span></span>&#123;</span><br><span class="line">        <span class="function">std::lock_guard&lt;std::mutex&gt; <span class="title">lock</span><span class="params">(mutex_)</span></span>;</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 查找对应的span，没找到代表不是PageCache分配的内存，直接返回</span></span><br><span class="line">        <span class="keyword">auto</span> it = spanMap_.<span class="built_in">find</span>(ptr);</span><br><span class="line">        <span class="keyword">if</span>(it == spanMap_.<span class="built_in">end</span>()) <span class="keyword">return</span>;</span><br><span class="line"></span><br><span class="line">        Span* span = it-&gt;second;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 尝试合并相邻的span</span></span><br><span class="line">        <span class="type">void</span>* nextAddr = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(ptr) + numPages * PAGE_SIZE;</span><br><span class="line">        <span class="keyword">auto</span> nextIt = spanMap_.<span class="built_in">find</span>(nextAddr);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span>(nextIt != spanMap_.<span class="built_in">end</span>())&#123;</span><br><span class="line">            Span* nextSpan = nextIt-&gt;second;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 1.首先检查nextSpan是否在空闲连表中</span></span><br><span class="line">            <span class="type">bool</span> found = <span class="literal">false</span>;</span><br><span class="line">            <span class="keyword">auto</span>&amp; nextList = freeSpans_[nextSpan-&gt;numPages];</span><br><span class="line">            </span><br><span class="line">            <span class="comment">// 检查是否是头节点</span></span><br><span class="line">            <span class="keyword">if</span>(nextList == nextSpan)&#123;</span><br><span class="line">                nextList = nextSpan-&gt;next;</span><br><span class="line">                found = <span class="literal">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span>(nextList)&#123;</span><br><span class="line">                Span* prev = nextList;</span><br><span class="line">                <span class="keyword">while</span>(prev-&gt;next)&#123;</span><br><span class="line">                    <span class="keyword">if</span>(prev-&gt;next == nextSpan)&#123;</span><br><span class="line">                        <span class="comment">// 将nextSpan从空闲链表中移除</span></span><br><span class="line">                        prev-&gt;next = nextSpan-&gt;next;</span><br><span class="line">                        found = <span class="literal">true</span>;</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    prev = prev-&gt;next;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">// 2.只有在找到nextSpan的情况下才进行合并</span></span><br><span class="line">            <span class="keyword">if</span>(found)&#123;</span><br><span class="line">                <span class="comment">// 合并span</span></span><br><span class="line">                span-&gt;numPages += nextSpan-&gt;numPages;</span><br><span class="line">                spanMap_.<span class="built_in">erase</span>(nextAddr);</span><br><span class="line">                <span class="keyword">delete</span> nextSpan;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">auto</span>&amp; list = freeSpans_[soan-&gt;numPages];</span><br><span class="line">        span-&gt;next = list;</span><br><span class="line">        list = span;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h4 id="尝试合并相邻的span-有几个重要的意义">尝试合并相邻的<code>span</code> 有几个重要的意义:</h4>
+<ol>
+<li>
+<p><strong>减少内存碎片</strong></p>
+<p>例如：有两个相邻的 span，<code>Span1</code> 为2页，<code>Span2</code> 为3页。合并后会得到一个5页的 <code>NewSpan</code>。</p>
+<ul>
+<li>
+<p><strong>如果不合并</strong>，当需要5页的内存时：</p>
+  <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (request_pages == <span class="number">5</span>) &#123;</span><br><span class="line">    <span class="comment">// 即使总空闲内存足够, 但因为碎片化无法满足请求</span></span><br><span class="line">    <span class="comment">// 可能需要向系统申请新内存</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p><strong>合并后</strong>：</p>
+  <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (request_pages == <span class="number">5</span>) &#123;</span><br><span class="line">    <span class="comment">// 可以直接使用合并后的span</span></span><br><span class="line">    <span class="comment">// 避免了向系统申请新内存</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>提高大内存分配效率</strong></p>
+<ul>
+<li>
+<p><strong>不合并的情况</strong></p>
+  <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span>* <span class="title">allocateSpan</span><span class="params">(<span class="type">size_t</span> numPages)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 需要遍历多个小span, 无法满足大页面请求</span></span><br><span class="line">    <span class="comment">// 最终可能需要向系统申请新内存</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p><strong>合并后</strong></p>
+  <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span>* <span class="title">allocateSpan</span><span class="params">(<span class="type">size_t</span> numPages)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 可能直接找到合适大小的span</span></span><br><span class="line">    <span class="comment">// 减少系统调用, 提高性能</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>优化内存管理</strong></p>
+<ul>
+<li>
+<p><strong>合并前</strong>，多个小 <code>span</code> 需要各自维护元数据，增加了开销：</p>
+  <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">Span</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">void</span>* pageAddr; <span class="comment">// 每个span都需要这些元数据</span></span><br><span class="line">    <span class="type">size_t</span> numPages;</span><br><span class="line">    Span* next;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p><strong>合并后</strong>，一个大 <code>span</code> 替代了多个小 <code>span</code>，从而减少了元数据的总体数量，节省了内存空间。</p>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>提高缓存效率</strong></p>
+<ul>
+<li>
+<p><strong>不合并的情况</strong>:</p>
+<ul>
+<li>多个小 <code>span</code> 可能在物理内存中是不连续的。</li>
+<li>顺序访问这些 <code>span</code> 时，可能会导致CPU缓存行频繁失效（Cache Miss），降低访问效率。</li>
+</ul>
+</li>
+<li>
+<p><strong>合并后</strong>:</p>
+<ul>
+<li>形成一个连续的大 <code>span</code>，提高了内存访问的空间局部性（Spatial Locality）。</li>
+<li>程序访问连续内存时，可以更有效地利用CPU缓存，减少缓存未命中，提升性能。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>系统资源管理</strong><br>
+当合并后的 <code>span</code> 变得足够大且完全空闲时，可以选择将其归还给操作系统，防止内存被长期占用。</p>
+</li>
+</ol>
+ <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 当span完全空闲且足够大时，可以选择归还给操作系统</span></span><br><span class="line"><span class="keyword">if</span> (span-&gt;numPages &gt;= RELEASE_THRESHOLD)</span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 归还大块内存给操作系统</span></span><br><span class="line">    <span class="built_in">munmap</span>(span-&gt;pageAddr, span-&gt;numPages * PAGE_SIZE);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>性能影响：</p>
+<ul>
+<li>优点：
+<ul>
+<li>减少内存碎片</li>
+<li>提高大内存分配效率</li>
+<li>减少系统调用</li>
+<li>优化空间局部性</li>
+</ul>
+</li>
+<li>潜在开销：
+<ul>
+<li>合并操作本身需要时间</li>
+<li>需要维护和搜索相邻span的信息</li>
+<li>可能增加锁的持有时间</li>
+</ul>
+</li>
+</ul>
+<p>因此，span合并是一个在时间开销和空间效率之间的权衡，但总体来说，这种合并策略对于内存池的长期运行效率是有益的，特别是在内存使用模式变化较大的场景下。</p>
+<p>好的，这是接续的Markdown文档内容：</p>
+<h4 id="为什么回收内存时尝试合并的-nextSpan-需要在-spanMap-中查找？spanMap-中的-span-不应该是那些已分配出去、还未回收的吗？">为什么回收内存时尝试合并的 <code>nextSpan</code> 需要在 <code>spanMap_</code> 中查找？<code>spanMap_</code> 中的 <code>span</code> 不应该是那些已分配出去、还未回收的吗？</h4>
+ <figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 尝试合并相邻的span</span></span><br><span class="line"><span class="type">void</span>* nextAddr = <span class="built_in">static_cast</span>&lt;<span class="type">char</span>*&gt;(ptr) + numPages * PAGE_SIZE;</span><br><span class="line"><span class="keyword">auto</span> nextIt = spanMap_.<span class="built_in">find</span>(nextAddr);</span><br><span class="line"><span class="keyword">if</span> (nextIt != spanMap_.<span class="built_in">end</span>())</span><br><span class="line">&#123;</span><br><span class="line">    Span* nextSpan = nextIt-&gt;second;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>答: 解释一下 <code>spanMap_</code> 的完整作用:</p>
+<ol>
+<li><code>spanMap_</code> 的双重作用</li>
+</ol>
+<ul>
+<li>
+<p><code>spanMap_</code> 不仅记录<strong>已分配</strong>的span，也同时记录<strong>空闲</strong>的span。</p>
+<p>C++</p>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">std::map&lt;void*, Span*&gt; spanMap_;</span><br></pre></td></tr></table></figure>
+</li>
+<li>
+<p>它记录了所有由 <code>PageCache</code> 管理的span（无论状态是已分配还是空闲）。</p>
+</li>
+<li>
+<p>它的核心功能是提供从<strong>内存地址</strong>到<strong>span对象</strong>的快速映射。</p>
+</li>
+<li>
+<p>主要用途是内存管理（回收）和相邻span的合并操作。</p>
+</li>
+</ul>
+<ol start="2">
+<li>为什么空闲的span要保留在 <code>spanMap_</code> 中？</li>
+</ol>
+<p>当一个 <code>span</code> 被释放时，它会被放入空闲列表 <code>freeSpans_</code> 中以备后续分配，但它<strong>并不会从 <code>spanMap_</code> 中移除</strong>。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">PageCache::deallocateSpan</span><span class="params">(<span class="type">void</span>* ptr, <span class="type">size_t</span> numPages)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// 1. span被释放后会被放入 freeSpans_ (空闲列表)</span></span><br><span class="line">    <span class="keyword">auto</span>&amp; list = freeSpans_[span-&gt;numPages];</span><br><span class="line">    span-&gt;next = list;</span><br><span class="line">    list = span;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 但span仍然保留在 spanMap_ 中</span></span><br><span class="line">    <span class="comment">// spanMap_[span-&gt;pageAddr] = span; // 这个映射关系保持不变</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><strong>这样设计的原因:</strong></p>
+<ul>
+<li><strong>便于快速查找相邻的空闲span进行合并</strong>：这是最关键的原因。回收一个span时，我们需要知道它后面的内存块是否空闲。<code>spanMap_</code> 提供了通过地址快速查找相邻span的能力。如果空闲span不在map里，就无法实现这个查找。</li>
+<li><strong>维护所有内存块的完整映射关系</strong>：<code>spanMap_</code> 就像一张“地图”，记录了 <code>PageCache</code> 管理的所有内存区域，确保任何一块内存的元信息都可以被快速定位。</li>
+<li><strong>提高内存合并的效率</strong>：通过map的 <code>find</code> 操作（时间复杂度O(logN)），可以高效地判断相邻内存块是否存在及其状态，远比遍历链表等方式要快。</li>
+</ul>
+<ol start="3">
+<li>合并过程示例</li>
+</ol>
+<p><strong>假设有以下情况:</strong></p>
+<ul>
+<li><strong>内存布局</strong>: <code>[Span1: 2页]</code> <code>[Span2: 3页]</code></li>
+<li><strong>当 <code>Span1</code> 被释放时</strong>:
+<ol>
+<li><code>Span1</code> 被标记为空闲并放入 <code>freeSpans_</code>，但它<strong>仍然保留在 <code>spanMap_</code> 中</strong>。</li>
+<li>程序计算出 <code>Span1</code> 结束后的地址（即 <code>nextAddr</code>）。</li>
+<li>程序使用 <code>nextAddr</code> 在 <code>spanMap_</code> 中查找，如果能找到 <code>Span2</code>（并且 <code>Span2</code> 也是空闲的），就说明可以合并。</li>
+<li>最终，<code>Span1</code> 和 <code>Span2</code> 可以被合并成一个大的空闲span。</li>
+</ol>
+</li>
+</ul>
+<p>两个数据结构相互配合:</p>
+<p><strong><code>freeSpans_</code></strong>: 按页数大小管理<strong>可用（空闲）的内存块，主要用于快速分配</strong>。<br>
+<strong><code>spanMap_</code></strong>: 维护<strong>所有</strong>内存块的地址到 <code>span</code> 的映射，主要用于<strong>快速合并</strong>和整体管理。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://taffy128.github.io/">lzx</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://taffy128.github.io/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/">https://taffy128.github.io/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://taffy128.github.io" target="_blank">lzx's Blog</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC1/" title="C++项目——内存池_v1"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">C++项目——内存池_v1</div></div><div class="info-2"><div class="info-item-1">C++项目——内存池_版本1 前置知识 std::allocator c++中所有stl容器都有自己的allocator类用于分配和回收空间，例如vector类中push_back函数的实现方式： 123456789template &lt;class T&gt;void Vector&lt;T&gt;::push_back(const T&amp; t)&#123;// are we out of space?	if (first_free == end)		reallocate(); // gets more space and copies existing elements to it	alloc.construct(first_free,...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">lzx</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">10</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Taffy128"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Taffy128" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:yyangguangnanhai9@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link"><span class="toc-number">1.</span> <span class="toc-text">C++项目——内存池_版本2</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="toc-number">1.1.</span> <span class="toc-text">前置知识</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%87%AA%E6%97%8B%E9%94%81%E7%9A%84%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.1.</span> <span class="toc-text">自旋锁的概念</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%87%AA%E6%97%8B%E9%94%81-vs-%E4%BA%92%E6%96%A5%E9%94%81"><span class="toc-number">1.1.1.1.</span> <span class="toc-text">自旋锁 vs. 互斥锁</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E6%A1%86%E6%9E%B6"><span class="toc-number">1.2.</span> <span class="toc-text">项目框架</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%AE%9E%E7%8E%B0%E4%BA%86%E5%86%85%E5%AD%98%E6%B1%A0%E7%89%88%E6%9C%AC1%E8%BF%98%E8%A6%81%E5%AE%9E%E7%8E%B0%E5%86%85%E5%AD%98%E6%B1%A0%E7%89%88%E6%9C%AC2-%EF%BC%9F"><span class="toc-number">1.2.1.</span> <span class="toc-text">为什么实现了内存池版本1还要实现内存池版本2 ？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E6%95%B4%E4%BD%93%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.2.2.</span> <span class="toc-text">项目整体介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E6%B1%A0%E6%9E%B6%E6%9E%84%E5%9B%BE"><span class="toc-number">1.2.2.1.</span> <span class="toc-text">内存池架构图</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B%E5%9B%BE"><span class="toc-number">1.2.2.2.</span> <span class="toc-text">执行流程图</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E6%9C%AC%E5%9C%B0%E7%BC%93%E5%AD%98-ThreadCache"><span class="toc-number">1.3.</span> <span class="toc-text">线程本地缓存(ThreadCache)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E6%9C%AC%E5%9C%B0%E7%BC%93%E5%AD%98%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.3.1.</span> <span class="toc-text">线程本地缓存介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-ThreadCache%E7%9A%84%E5%AE%9A%E4%B9%89"><span class="toc-number">1.3.2.</span> <span class="toc-text">1.ThreadCache的定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E8%A7%A3%E9%87%8A"><span class="toc-number">1.3.3.</span> <span class="toc-text">代码解释</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.4.</span> <span class="toc-text">2.内存分配实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E4%BB%8E%E4%B8%AD%E5%BF%83%E7%BC%93%E5%AD%98%E8%8E%B7%E5%8F%96%E5%86%85%E5%AD%98"><span class="toc-number">1.3.5.</span> <span class="toc-text">3.从中心缓存获取内存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E5%86%85%E5%AD%98%E9%87%8A%E6%94%BE%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.6.</span> <span class="toc-text">4.内存释放实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%BF%99%E6%A0%B7%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.7.</span> <span class="toc-text">5.为什么这样实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E5%9C%A8%E5%86%85%E5%AD%98%E6%B1%A0%E4%B8%AD%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="toc-number">1.3.8.</span> <span class="toc-text">6.在内存池中的作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%AD%E5%BF%83%E7%BC%93%E5%AD%98%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.3.9.</span> <span class="toc-text">中心缓存介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-CentralCache%E7%9A%84%E5%AE%9A%E4%B9%89%E5%92%8C%E4%BD%9C%E7%94%A8"><span class="toc-number">1.3.10.</span> <span class="toc-text">1.CentralCache的定义和作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E8%A7%A3%E9%87%8A-2"><span class="toc-number">1.3.11.</span> <span class="toc-text">代码解释</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E4%BB%8E%E4%B8%AD%E5%BF%83%E7%BC%93%E5%AD%98%E8%8E%B7%E5%8F%96%E5%86%85%E5%AD%98%E5%9D%97%E8%BF%94%E5%9B%9E%E7%BB%99%E7%BA%BF%E7%A8%8B%E6%9C%AC%E5%9C%B0%E7%BC%93%E5%AD%98"><span class="toc-number">1.3.12.</span> <span class="toc-text">2.从中心缓存获取内存块返回给线程本地缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%A3%E7%A0%81%E8%A7%A3%E9%87%8A-3"><span class="toc-number">1.3.13.</span> <span class="toc-text">代码解释</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%B0%86%E7%BA%BF%E7%A8%8B%E6%9C%AC%E5%9C%B0%E7%BC%93%E5%AD%98%E5%A4%9A%E4%BD%99%E7%9A%84%E5%86%85%E5%AD%98%E5%9D%97%E5%BD%92%E8%BF%98%E7%BB%99%E4%B8%AD%E5%BF%83%E7%BC%93%E5%AD%98"><span class="toc-number">1.3.14.</span> <span class="toc-text">3.将线程本地缓存多余的内存块归还给中心缓存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-%E8%AE%BE%E8%AE%A1%E7%89%B9%E7%82%B9"><span class="toc-number">1.3.15.</span> <span class="toc-text">4.设计特点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="toc-number">1.3.16.</span> <span class="toc-text">5.工作流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-%E4%B8%BA%E4%BB%80%E4%B9%88%E8%BF%99%E4%B9%88%E8%AE%BE%E8%AE%A1"><span class="toc-number">1.3.17.</span> <span class="toc-text">6.为什么这么设计</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%A1%B5%E7%BC%93%E5%AD%98%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.3.18.</span> <span class="toc-text">页缓存介绍</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-PageCache%E7%9A%84%E5%AE%9A%E4%BD%8D%E5%92%8C%E8%81%8C%E8%B4%A3"><span class="toc-number">1.3.19.</span> <span class="toc-text">1.PageCache的定位和职责</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.3.20.</span> <span class="toc-text">2.核心功能实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-%E5%9C%A8%E5%86%85%E5%AD%98%E6%B1%A0%E4%B8%AD%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="toc-number">1.3.21.</span> <span class="toc-text">3.在内存池中的作用</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B0%E6%8D%AE%E5%AE%9A%E4%B9%89"><span class="toc-number">1.3.22.</span> <span class="toc-text">数据定义</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%B9%E7%9B%AE%E7%BB%86%E8%8A%82%E6%80%9D%E8%80%83"><span class="toc-number">1.4.</span> <span class="toc-text">项目细节思考</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%A1%B5%E7%BC%93%E5%AD%98%E5%9B%9E%E6%94%B6%E5%86%85%E5%AD%98%E6%97%B6%E8%A6%81%E5%B0%9D%E8%AF%95%E5%90%88%E5%B9%B6"><span class="toc-number">1.4.0.1.</span> <span class="toc-text">为什么页缓存回收内存时要尝试合并?</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B0%9D%E8%AF%95%E5%90%88%E5%B9%B6%E7%9B%B8%E9%82%BB%E7%9A%84span-%E6%9C%89%E5%87%A0%E4%B8%AA%E9%87%8D%E8%A6%81%E7%9A%84%E6%84%8F%E4%B9%89"><span class="toc-number">1.4.0.2.</span> <span class="toc-text">尝试合并相邻的span 有几个重要的意义:</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%9B%9E%E6%94%B6%E5%86%85%E5%AD%98%E6%97%B6%E5%B0%9D%E8%AF%95%E5%90%88%E5%B9%B6%E7%9A%84-nextSpan-%E9%9C%80%E8%A6%81%E5%9C%A8-spanMap-%E4%B8%AD%E6%9F%A5%E6%89%BE%EF%BC%9FspanMap-%E4%B8%AD%E7%9A%84-span-%E4%B8%8D%E5%BA%94%E8%AF%A5%E6%98%AF%E9%82%A3%E4%BA%9B%E5%B7%B2%E5%88%86%E9%85%8D%E5%87%BA%E5%8E%BB%E3%80%81%E8%BF%98%E6%9C%AA%E5%9B%9E%E6%94%B6%E7%9A%84%E5%90%97%EF%BC%9F"><span class="toc-number">1.4.0.3.</span> <span class="toc-text">为什么回收内存时尝试合并的 nextSpan 需要在 spanMap_ 中查找？spanMap_ 中的 span 不应该是那些已分配出去、还未回收的吗？</span></a></li></ol></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/" title="无标题">无标题</a><time datetime="2025-09-01T03:32:21.916Z" title="发表于 2025-09-01 11:32:21">2025-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC1/" title="C++项目——内存池_v1">C++项目——内存池_v1</a><time datetime="2025-09-01T03:32:21.912Z" title="发表于 2025-09-01 11:32:21">2025-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/08/21/CS106L-Winter2025-Assignment7-Unique-Pointer/" title="CS106L Winter2025 Assignment7 Unique Pointer">CS106L Winter2025 Assignment7 Unique Pointer</a><time datetime="2025-08-21T08:23:18.565Z" title="发表于 2025-08-21 16:23:18">2025-08-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/08/21/CS106L-Winter2025-NOTES/" title="CS106L Winter2025 NOTES">CS106L Winter2025 NOTES</a><time datetime="2025-08-21T01:54:55.317Z" title="发表于 2025-08-21 09:54:55">2025-08-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/08/20/CS106L-Winter2025-Assignment6-Explore-Courses/" title="CS106L Winter2025 Assignment6 Explore Courses">CS106L Winter2025 Assignment6 Explore Courses</a><time datetime="2025-08-20T08:31:09.066Z" title="发表于 2025-08-20 16:31:09">2025-08-20</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2025 By lzx</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text">Hi, welcome to my blog!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
