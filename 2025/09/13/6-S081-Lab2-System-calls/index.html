@@ -1,0 +1,191 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>6.S081_Lab2_System calls | lzx's Blog</title><meta name="author" content="lzx"><meta name="copyright" content="lzx"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="6.S081_Lab2_System calls 写在前面 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自">
+<meta property="og:type" content="article">
+<meta property="og:title" content="6.S081_Lab2_System calls">
+<meta property="og:url" content="https://taffy128.github.io/2025/09/13/6-S081-Lab2-System-calls/index.html">
+<meta property="og:site_name" content="lzx&#39;s Blog">
+<meta property="og:description" content="6.S081_Lab2_System calls 写在前面 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://taffy128.github.io/img/avatar.jpg">
+<meta property="article:published_time" content="2025-09-13T09:33:55.752Z">
+<meta property="article:modified_time" content="2025-09-13T09:34:14.602Z">
+<meta property="article:author" content="lzx">
+<meta property="article:tag" content="C++学习笔记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://taffy128.github.io/img/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "6.S081_Lab2_System calls",
+  "url": "https://taffy128.github.io/2025/09/13/6-S081-Lab2-System-calls/",
+  "image": "https://taffy128.github.io/img/avatar.jpg",
+  "datePublished": "2025-09-13T09:33:55.752Z",
+  "dateModified": "2025-09-13T09:34:14.602Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "lzx",
+      "url": "https://taffy128.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://taffy128.github.io/2025/09/13/6-S081-Lab2-System-calls/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '6.S081_Lab2_System calls',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-color: #FFB6C1;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fas fa-folder-open"></i><span> 分类</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/categories/CS%20106L/"><span> CS 106L</span></a></li><li><a class="site-page child" href="/categories/%E5%86%85%E5%AD%98%E6%B1%A0/"><span> 内存池</span></a></li><li><a class="site-page child" href="/categories/6-S081/"><span> 6.S081</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">lzx's Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">6.S081_Lab2_System calls</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fas fa-folder-open"></i><span> 分类</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/categories/CS%20106L/"><span> CS 106L</span></a></li><li><a class="site-page child" href="/categories/%E5%86%85%E5%AD%98%E6%B1%A0/"><span> 内存池</span></a></li><li><a class="site-page child" href="/categories/6-S081/"><span> 6.S081</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">6.S081_Lab2_System calls</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-09-13T09:33:55.752Z" title="发表于 2025-09-13 17:33:55">2025-09-13</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-09-13T09:34:14.602Z" title="更新于 2025-09-13 17:34:14">2025-09-13</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/6-S081/">6.S081</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1>6.S081_Lab2_System calls</h1>
+<h2 id="写在前面">写在前面</h2>
+<p>如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读<a target="_blank" rel="noopener" href="https://th0ar.gitbooks.io/xv6-chinese/content/index.html">xv6book</a></p>
+<p>如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试</p>
+<p>如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，<strong>但是一定不要边看边写，要彻底看懂后自己完整的敲出来</strong></p>
+<p><a target="_blank" rel="noopener" href="https://pdos.csail.mit.edu/6.828/2021/labs/syscall.html">Lab1地址</a> <a target="_blank" rel="noopener" href="https://pdos.csail.mit.edu/6.828/2021/schedule.html">课程首页</a></p>
+<h2 id="0-Makefile">0.Makefile</h2>
+<p>每个任务完成之后需要在Makefile中添加对应的信息才能运行</p>
+<p>在<code>UPROGS</code>项下添加以下内容：</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$U/_trace\</span><br><span class="line">$U/_sysinfotest\</span><br></pre></td></tr></table></figure>
+<h2 id="1-System-call-tracing">1.System call tracing</h2>
+<p>要求：<code>trace [tracing_mask] [command]</code> 要求当调用了给定的tracing mask所对应的system call时，打印输出调用该system call的进程PID、system call的名称、system call的返回值。已经给出了user space下的user/trace.c，需要注册并实现<code>trace</code>这一system call</p>
+<p>在<code>user/user.h</code>中先注册<code>trace</code>这一user function：<code>int trace(int)</code></p>
+<p>在<code>user/usys.pl</code>注册一个ecall到kernel的kernel态的trace的入口：<code>entry(&quot;trace&quot;);</code></p>
+<p>在<code>kernel/sys_trace.c</code>中实现一个<code>sys_trace()</code>，将system call的传入参数，也就是tracing mask保存到<code>kernel/proc.h</code>中的<code>proc</code>结构体中新注册的int变量中，tracing mask的获取方式为<code>argint(int, int *)</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">uint64 <span class="title function_">sys_trace</span><span class="params">(<span class="type">void</span>)</span>&#123;</span><br><span class="line">  <span class="type">int</span> n;</span><br><span class="line"></span><br><span class="line">  argint(<span class="number">0</span>,&amp;n);</span><br><span class="line">  myproc()-&gt;trace_mask = n;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>修改<code>kernel/proc.c</code>中的<code>fork()</code>来把trace mask从父进程复制到子进程</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">np-&gt;trace_mask = p-&gt;trace_mask;</span><br></pre></td></tr></table></figure>
+<p>修改<code>kernel/syscall.c</code>中的<code>syscall()</code>来打印输出，注意需要注册一个<code>extern uint 64 sys_trace(void)</code>和<code>[SYS_ trace] sys_trace</code>。注意sys call的返回值是保存在进程的trapframe中的a0寄存器的</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line"><span class="title function_">syscall</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> num;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">proc</span> *<span class="title">p</span> =</span> myproc();</span><br><span class="line">  <span class="type">char</span>* syscall_name[<span class="number">22</span>] = &#123;<span class="string">&quot;fork&quot;</span>, <span class="string">&quot;exit&quot;</span>, <span class="string">&quot;wait&quot;</span>, <span class="string">&quot;pipe&quot;</span>, <span class="string">&quot;read&quot;</span>, <span class="string">&quot;kill&quot;</span>, <span class="string">&quot;exec&quot;</span>, <span class="string">&quot;fstat&quot;</span>, <span class="string">&quot;chdir&quot;</span>, <span class="string">&quot;dup&quot;</span>, <span class="string">&quot;getpid&quot;</span>, <span class="string">&quot;sbrk&quot;</span>, <span class="string">&quot;sleep&quot;</span>, <span class="string">&quot;uptime&quot;</span>, <span class="string">&quot;open&quot;</span>, <span class="string">&quot;write&quot;</span>, <span class="string">&quot;mknod&quot;</span>, <span class="string">&quot;unlink&quot;</span>, <span class="string">&quot;link&quot;</span>, <span class="string">&quot;mkdir&quot;</span>, <span class="string">&quot;close&quot;</span>, <span class="string">&quot;trace&quot;</span>&#125;;</span><br><span class="line">  num = p-&gt;trapframe-&gt;a7;</span><br><span class="line">  <span class="keyword">if</span>(num &gt; <span class="number">0</span> &amp;&amp; num &lt; NELEM(syscalls) &amp;&amp; syscalls[num]) &#123;</span><br><span class="line">    <span class="comment">// Use num to lookup the system call function for num, call it,</span></span><br><span class="line">    <span class="comment">// and store its return value in p-&gt;trapframe-&gt;a0</span></span><br><span class="line">    p-&gt;trapframe-&gt;a0 = syscalls[num]();</span><br><span class="line">    <span class="keyword">if</span>((<span class="number">1</span>&lt;&lt;num) &amp; p-&gt;trace_mask)&#123;</span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">&quot;%d: syscall %s -&gt; %d\n&quot;</span>,p-&gt;pid,syscall_name[num<span class="number">-1</span>],p-&gt;trapframe-&gt;a0);</span><br><span class="line">    &#125;</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d %s: unknown sys call %d\n&quot;</span>,</span><br><span class="line">            p-&gt;pid, p-&gt;name, num);</span><br><span class="line">    p-&gt;trapframe-&gt;a0 = <span class="number">-1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="2-Sysinfo">2.Sysinfo</h2>
+<p>要求：写一个<code>sysinfo</code>这个system call，需要获取当前空闲的内存大小填入<code>struct sysinfo.freemem</code>中，获取当前所有不是<code>UNUSED</code>的进程数量填入<code>struct sysinfo.nproc</code>中</p>
+<p>和前面一样先要在<code>user/user.h</code>中声明system call<code>int sysinfo(struct sysinfo *)</code>以及<code>struct sysinfo</code>，在<code>user/usys.pl</code>中注册entry，在<code>kernel/syscall.h</code>中注册一个syscall number，在<code>kernel/sysproc.c</code>中对<code>uint64 sys_sysinfo(void)</code>进行实现，注意要在<code>sysproc.c</code>中添加头文件<code>sysinfo.h</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">uint64 <span class="title function_">sys_sysinfo</span><span class="params">()</span>&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">sysinfo</span> <span class="title">si</span>;</span></span><br><span class="line">  uint64 sysinfop;</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 此时sysinfop为用户空间内存地址</span></span><br><span class="line">  argaddr(<span class="number">0</span>,&amp;sysinfop);</span><br><span class="line">  si.freemem = count_freemem();</span><br><span class="line">  si.nproc = count_thread();</span><br><span class="line"></span><br><span class="line">  <span class="comment">// copyout的用法参考filestat()(kernel/file.c)</span></span><br><span class="line">  <span class="keyword">if</span>(copyout(myproc()-&gt;pagetable,sysinfop,(<span class="type">char</span> *)&amp;si,<span class="keyword">sizeof</span>(si)) &lt; <span class="number">0</span>)&#123;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">-1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>kernel/proc.c</code>中实现<code>count_thread()</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">count_thread</span><span class="params">()</span>&#123;</span><br><span class="line">  <span class="type">int</span> i;</span><br><span class="line">  <span class="type">int</span> num = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">for</span>(i=<span class="number">0</span>;i&lt;NPROC;i++)&#123;</span><br><span class="line">    <span class="keyword">if</span>(proc[i].state != UNUSED)&#123;</span><br><span class="line">      num ++;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> num;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在<code>kernel/kalloc.c</code>中实现<code>count_freemem()</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">uint64 <span class="title function_">count_freemem</span><span class="params">()</span>&#123;</span><br><span class="line">  uint64 size = <span class="number">0</span>;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">run</span> *<span class="title">r</span> =</span> kmem.freelist;</span><br><span class="line">  uint64 i = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">while</span>(r)&#123;</span><br><span class="line">    ++ i;</span><br><span class="line">    r = r-&gt;next;</span><br><span class="line">  &#125;</span><br><span class="line">  size = i*PGSIZE;</span><br><span class="line">  <span class="keyword">return</span> size;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>最后，记得在根目录下创建<code>time.txt</code>和<code>answers-syscall.txt</code>，然后<code>make grade</code>才能获得满分</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://taffy128.github.io/">lzx</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://taffy128.github.io/2025/09/13/6-S081-Lab2-System-calls/">https://taffy128.github.io/2025/09/13/6-S081-Lab2-System-calls/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://taffy128.github.io" target="_blank">lzx's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/C-%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">C++学习笔记</a></div><div class="post-share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2025/09/13/6-S081-Lab1-Unix-Utilities/" title="6.S081_Lab1_Unix Utilities"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">6.S081_Lab1_Unix Utilities</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab1_Unix Utilities 写在前面 这是本课程第一次正式Lab，自行完成需要耗费一定的时间 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab1地址 课程首页 0.Makefile 每个任务完成之后需要在Makefile中添加对应的信息才能运行 在UPROGS项下添加以下内容： 12345$U/_sleep\$U/_pingpong\$U/_primes\$U/_find\$U/_xargs\ 1.Sleep 通过sleep系统调用来实现休眠一定时间，注意如果没有传入参数，程序需要打印错误信息 1234567891011#include &quot;kernel/types.h&quot;#include...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2025/09/13/6-S081-Lab0-Environment-Setup/" title="6.S081_Lab0_Environment Setup"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-13</div><div class="info-item-2">6.S081_Lab0_Environment Setup</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab0_Environment Setup 写在前面 本文旨在为 MIT 6.S081: Operating System Engineering (RISC-V 版本) 的学习者提供一份完整、详尽的开发与调试环境搭建步骤。一个配置完善的环境是高效完成课程实验、深入理解操作系统内核的关键。本教程将引导你完成从安装工具链到配置图形化调试环境的全过程。 第一部分：基础概念 在开始配置前，理解以下几个核心概念，有助于清晰地认识整个开发与调试工作流。 1.1. 宿主机 (Host) 与客户机 (Guest) 整个开发过程涉及两个相互独立的系统环境：  宿主操作系统 (Host OS)：这是你用于开发和编译的系统，通常是一个 Linux 发行版（如 Ubuntu）。所有的开发工具，包括编译器、模拟器和调试器，都安装并运行在宿主机上。 客户操作系统 (Guest OS)：这是你正在学习和开发的操作系统，即 xv6。它运行在由模拟器创建的独立虚拟环境中。  1.2. QEMU 的角色 QEMU 是一个开源的系统模拟器。在本课程中，它的作用是提供一个完整的、软件模拟的...</div></div></div></a><a class="pagination-related" href="/2025/09/13/6-S081-Lab1-Unix-Utilities/" title="6.S081_Lab1_Unix Utilities"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-13</div><div class="info-item-2">6.S081_Lab1_Unix Utilities</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab1_Unix Utilities 写在前面 这是本课程第一次正式Lab，自行完成需要耗费一定的时间 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab1地址 课程首页 0.Makefile 每个任务完成之后需要在Makefile中添加对应的信息才能运行 在UPROGS项下添加以下内容： 12345$U/_sleep\$U/_pingpong\$U/_primes\$U/_find\$U/_xargs\ 1.Sleep 通过sleep系统调用来实现休眠一定时间，注意如果没有传入参数，程序需要打印错误信息 1234567891011#include &quot;kernel/types.h&quot;#include...</div></div></div></a><a class="pagination-related" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC1/" title="C++项目——内存池_v1"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-01</div><div class="info-item-2">C++项目——内存池_v1</div></div><div class="info-2"><div class="info-item-1">C++项目——内存池_版本1 前置知识 std::allocator c++中所有stl容器都有自己的allocator类用于分配和回收空间，例如vector类中push_back函数的实现方式： 123456789template &lt;class T&gt;void Vector&lt;T&gt;::push_back(const T&amp; t)&#123;// are we out of space?	if (first_free == end)		reallocate(); // gets more space and copies existing elements to it	alloc.construct(first_free,...</div></div></div></a><a class="pagination-related" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/" title="C++项目——内存池_v2"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-01</div><div class="info-item-2">C++项目——内存池_v2</div></div><div class="info-2"><div class="info-item-1">C++项目——内存池_版本2 前置知识 自旋锁的概念 自旋锁是一种 轻量级的锁机制，用于实现线程同步。当一个线程尝试获取锁时，如果锁已经被其他线程占用，它不会进入阻塞状态，而是 不断尝试获取锁，直到成功。这种“忙等”行为就叫 “自旋”。 在**fetchRange**函数代码中的部分：   test_and_set()是 原子操作，它将locks_[index]设置为true，并返回锁的原始状态。   如果返回值表示锁已经被占用（true），线程会继续尝试获取锁（自旋）。   这种方式避免了线程切换的开销。   自旋锁 vs. 互斥锁    自旋锁 互斥锁     忙等，反复尝试获取锁 阻塞，线程会被挂起   适合锁持有时间很短的场景 适合锁持有时间较长的场景   无需操作系统上下文切换，性能高 需要上下文切换，开销较大    项目框架 为什么实现了内存池版本1还要实现内存池版本2...</div></div></div></a><a class="pagination-related" href="/2025/07/22/CS106L-Winter2025-Assignment1-SimpleEnroll/" title="CS106L Winter2025 Assignment1 SimpleEnroll"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-07-22</div><div class="info-item-2">CS106L Winter2025 Assignment1 SimpleEnroll</div></div><div class="info-2"><div class="info-item-1">CS106L Winter2025 Assignment1 SimpleEnroll 写在前面 作业地址：CS106L Winter2025 Assignment 以下是Stanford CS106L的第一个作业，需要在学完Containers后完成 具体思路 Part 0: Read the code and fill in the Course...</div></div></div></a><a class="pagination-related" href="/2025/08/09/CS106L-Winter2025-Assignment2-Marriage-Pact/" title="CS106L Winter2025 Assignment2 Marriage Pact"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-08-09</div><div class="info-item-2">CS106L Winter2025 Assignment2 Marriage Pact</div></div><div class="info-2"><div class="info-item-1">CS106L Winter2025 Assignment2 Marriage Pact 写在前面 作业地址：CS106L Winter2025 Assignment 以下是Stanford CS106L的第二个作业，需要在学完Classes后完成 具体思路 Part 0: Setup 将kYourName改成自己的名字 1std::string kYourName = &quot;ACE Taffy&quot;; Part 1: Get all applicants 本题需要完成get_applicants函数：从一个.txt文件中读取其中内容，并将其中内容放到一个set里，具体思路即为  打开文件 读取每行的内容，将内容放到set中  12345678910std::set&lt;std::string&gt; get_applicants(std::string filename) &#123;  std::set&lt;std::string&gt; applicants;  std::ifstream file(filename);  std::string line;...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">lzx</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Taffy128"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Taffy128" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:yyangguangnanhai9@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link"><span class="toc-number">1.</span> <span class="toc-text">6.S081_Lab2_System calls</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2"><span class="toc-number">1.1.</span> <span class="toc-text">写在前面</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#0-Makefile"><span class="toc-number">1.2.</span> <span class="toc-text">0.Makefile</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-System-call-tracing"><span class="toc-number">1.3.</span> <span class="toc-text">1.System call tracing</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-Sysinfo"><span class="toc-number">1.4.</span> <span class="toc-text">2.Sysinfo</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/13/6-S081-Lab2-System-calls/" title="6.S081_Lab2_System calls">6.S081_Lab2_System calls</a><time datetime="2025-09-13T09:33:55.752Z" title="发表于 2025-09-13 17:33:55">2025-09-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/13/6-S081-Lab1-Unix-Utilities/" title="6.S081_Lab1_Unix Utilities">6.S081_Lab1_Unix Utilities</a><time datetime="2025-09-13T09:30:35.779Z" title="发表于 2025-09-13 17:30:35">2025-09-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/13/6-S081-Lab0-Environment-Setup/" title="6.S081_Lab0_Environment Setup">6.S081_Lab0_Environment Setup</a><time datetime="2025-09-13T09:17:27.009Z" title="发表于 2025-09-13 17:17:27">2025-09-13</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC2/" title="C++项目——内存池_v2">C++项目——内存池_v2</a><time datetime="2025-09-01T03:32:21.916Z" title="发表于 2025-09-01 11:32:21">2025-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/09/01/C-%E9%A1%B9%E7%9B%AE%E2%80%94%E2%80%94%E5%86%85%E5%AD%98%E6%B1%A0-%E7%89%88%E6%9C%AC1/" title="C++项目——内存池_v1">C++项目——内存池_v1</a><time datetime="2025-09-01T03:32:21.912Z" title="发表于 2025-09-01 11:32:21">2025-09-01</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2025 By lzx</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text">Hi, welcome to my blog!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
