@@ -1,0 +1,516 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>CSAPP_DataLab_01 | lzx's Blog</title><meta name="author" content="lzx"><meta name="copyright" content="lzx"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="万事开头难，尤其是和 0 与 1 打交道，和后面的实验相比，这次只能算个热身。但是喜欢运动的都知道，热身很重要！ 任务目标 我们先来看看 Datalab 需要我们做什么。主要是通过这次的作业来熟悉整型及浮点数的位表达形式，简单来说，就是解开一些人工谜题。列表如下： 比特操作谜题：    名称 描述 难度 指令数目     bitXor(x,y) 只用 &amp; 和 ~ 实现 x^y 1 14">
+<meta property="og:type" content="article">
+<meta property="og:title" content="CSAPP_DataLab_01">
+<meta property="og:url" content="https://taffy128.github.io/2025/12/06/CSAPP-DataLab-01/index.html">
+<meta property="og:site_name" content="lzx&#39;s Blog">
+<meta property="og:description" content="万事开头难，尤其是和 0 与 1 打交道，和后面的实验相比，这次只能算个热身。但是喜欢运动的都知道，热身很重要！ 任务目标 我们先来看看 Datalab 需要我们做什么。主要是通过这次的作业来熟悉整型及浮点数的位表达形式，简单来说，就是解开一些人工谜题。列表如下： 比特操作谜题：    名称 描述 难度 指令数目     bitXor(x,y) 只用 &amp; 和 ~ 实现 x^y 1 14">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://taffy128.github.io/img/avatar.jpg">
+<meta property="article:published_time" content="2025-12-06T10:07:38.766Z">
+<meta property="article:modified_time" content="2025-12-06T10:09:12.089Z">
+<meta property="article:author" content="lzx">
+<meta property="article:tag" content="C++学习笔记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://taffy128.github.io/img/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "CSAPP_DataLab_01",
+  "url": "https://taffy128.github.io/2025/12/06/CSAPP-DataLab-01/",
+  "image": "https://taffy128.github.io/img/avatar.jpg",
+  "datePublished": "2025-12-06T10:07:38.766Z",
+  "dateModified": "2025-12-06T10:09:12.089Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "lzx",
+      "url": "https://taffy128.github.io/"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://taffy128.github.io/2025/12/06/CSAPP-DataLab-01/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: {"defaultEncoding":2,"translateDelay":0,"msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"簡"},
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":true},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'CSAPP_DataLab_01',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-color: #FFB6C1;"></div><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">23</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fas fa-folder-open"></i><span> 分类</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/categories/CS%20106L/"><span> CS 106L</span></a></li><li><a class="site-page child" href="/categories/%E5%86%85%E5%AD%98%E6%B1%A0/"><span> 内存池</span></a></li><li><a class="site-page child" href="/categories/6-S081/"><span> 6.S081</span></a></li><li><a class="site-page child" href="/categories/CSAPP/"><span> CSAPP</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg fixed" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">lzx's Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">CSAPP_DataLab_01</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><span class="site-page group"><i class="fa-fw fas fas fa-folder-open"></i><span> 分类</span><i class="fas fa-chevron-down"></i></span><ul class="menus_item_child"><li><a class="site-page child" href="/categories/CS%20106L/"><span> CS 106L</span></a></li><li><a class="site-page child" href="/categories/%E5%86%85%E5%AD%98%E6%B1%A0/"><span> 内存池</span></a></li><li><a class="site-page child" href="/categories/6-S081/"><span> 6.S081</span></a></li><li><a class="site-page child" href="/categories/CSAPP/"><span> CSAPP</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">CSAPP_DataLab_01</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-12-06T10:07:38.766Z" title="发表于 2025-12-06 18:07:38">2025-12-06</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-12-06T10:09:12.089Z" title="更新于 2025-12-06 18:09:12">2025-12-06</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/CSAPP/">CSAPP</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>万事开头难，尤其是和 0 与 1 打交道，和后面的实验相比，这次只能算个热身。但是喜欢运动的都知道，热身很重要！</p>
+<h2 id="任务目标">任务目标</h2>
+<p>我们先来看看 Datalab 需要我们做什么。主要是通过这次的作业来熟悉整型及浮点数的位表达形式，简单来说，就是解开一些人工谜题。列表如下：</p>
+<p>比特操作谜题：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">名称</th>
+<th style="text-align:center">描述</th>
+<th style="text-align:center">难度</th>
+<th style="text-align:center">指令数目</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">bitXor(x,y)</td>
+<td style="text-align:center">只用 <code>&amp;</code> 和 <code>~</code> 实现 <code>x^y</code></td>
+<td style="text-align:center">1</td>
+<td style="text-align:center">14</td>
+</tr>
+<tr>
+<td style="text-align:center">allOddBits(x)</td>
+<td style="text-align:center">所有的奇数位都为 1 吗</td>
+<td style="text-align:center">2</td>
+<td style="text-align:center">12</td>
+</tr>
+<tr>
+<td style="text-align:center">isAsciiDigit(x)</td>
+<td style="text-align:center">x 是 ASCII 码吗</td>
+<td style="text-align:center">3</td>
+<td style="text-align:center">15</td>
+</tr>
+<tr>
+<td style="text-align:center">conditional(x, y, z)</td>
+<td style="text-align:center">类似于 C 语言中的 x? y:z</td>
+<td style="text-align:center">3</td>
+<td style="text-align:center">16</td>
+</tr>
+<tr>
+<td style="text-align:center">logicalNeg(x)</td>
+<td style="text-align:center">计算 <code>!x</code> 而不用 <code>!</code> 运算符</td>
+<td style="text-align:center">4</td>
+<td style="text-align:center">12</td>
+</tr>
+</tbody>
+</table>
+<p>整数运算谜题：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">名称</th>
+<th style="text-align:center">描述</th>
+<th style="text-align:center">难度</th>
+<th style="text-align:center">指令数目</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">tmin()</td>
+<td style="text-align:center">返回最小的补码</td>
+<td style="text-align:center">1</td>
+<td style="text-align:center">4</td>
+</tr>
+<tr>
+<td style="text-align:center">isTmax(x)</td>
+<td style="text-align:center">x 是最大的 32 位补码</td>
+<td style="text-align:center">2</td>
+<td style="text-align:center">10</td>
+</tr>
+<tr>
+<td style="text-align:center">negate(x)</td>
+<td style="text-align:center">不用负号得到 <code>-x</code></td>
+<td style="text-align:center">3</td>
+<td style="text-align:center">24</td>
+</tr>
+<tr>
+<td style="text-align:center">isLessOrEqual(x,y)</td>
+<td style="text-align:center"><code>x &lt;= y?</code></td>
+<td style="text-align:center">3</td>
+<td style="text-align:center">24</td>
+</tr>
+<tr>
+<td style="text-align:center">howManyBits(x)</td>
+<td style="text-align:center">计算表达 <code>x</code> 所需的最少位数</td>
+<td style="text-align:center">4</td>
+<td style="text-align:center">90</td>
+</tr>
+</tbody>
+</table>
+<p>浮点数运算谜题：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">名称</th>
+<th style="text-align:center">描述</th>
+<th style="text-align:center">难度</th>
+<th style="text-align:center">指令数目</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><code>floatScale2(uf)</code></td>
+<td style="text-align:center">计算 $2.0\times{f}$</td>
+<td style="text-align:center">4</td>
+<td style="text-align:center">30</td>
+</tr>
+<tr>
+<td style="text-align:center"><code>floatFloat2Int(uf)</code></td>
+<td style="text-align:center">计算 <code>(int) f</code></td>
+<td style="text-align:center">4</td>
+<td style="text-align:center">30</td>
+</tr>
+<tr>
+<td style="text-align:center"><code>floatPower2(x)</code></td>
+<td style="text-align:center">计算 $2.0^{x}$</td>
+<td style="text-align:center">4</td>
+<td style="text-align:center">30</td>
+</tr>
+</tbody>
+</table>
+<h2 id="上手指南">上手指南</h2>
+<p>一共 13 个需要补充的函数，所有的工作都只需修改 <code>bits.c</code> 文件，测试的话有三种方式：<code>btest</code>, <code>dlc</code>, 和 <code>BDD checker</code>。</p>
+<p>一些小技巧：</p>
+<ul>
+<li>在函数开始时声明所有变量</li>
+<li><code>&#125;</code> 应该在第一列</li>
+<li>注意运算符号的优先级，使用括号确保顺序的正确</li>
+<li>关注 !, 0, TMin 等</li>
+</ul>
+<p>任务指引还是比较清晰的，主要有以下一些说明：</p>
+<ol>
+<li>整型的范围是 0 到 255(0xFF)，不允许用更大</li>
+<li>只能包含参数和局部变量</li>
+<li>一元操作符 <code>!</code> <code>~</code></li>
+<li>二元操作符 <code>&amp;</code> <code>|</code> <code>+</code> <code>&lt;&lt;</code> <code>&gt;&gt;</code></li>
+</ol>
+<p>不允许的操作有：</p>
+<ol>
+<li>使用任何条件控制语句</li>
+<li>定义和使用宏</li>
+<li>定义其他的函数</li>
+<li>调用函数</li>
+<li>使用其他的操作符</li>
+<li>使用类型转换</li>
+<li>使用除 int 之外的类型（针对整型）</li>
+<li>使用除 int, unsigned 之外的类型（针对浮点数）</li>
+</ol>
+<p>可以认为机器：</p>
+<ul>
+<li>使用 2’s complent，32位</li>
+<li><strong>执行算术右移</strong></li>
+<li>移动超过字长的位数会出问题</li>
+</ul>
+<p>其他需要注意的事情有：</p>
+<ol>
+<li>使用 dlc(data lab checker) 来检测代码的合法性（有没有使用不给使用的符号语法等等）</li>
+<li>每个函数都有操作数的上限值，注意 <code>=</code> 不算</li>
+<li>使用 btest 来测试结果的正确与否</li>
+<li>使用 BDD checker 来正规测试你的函数</li>
+</ol>
+<h2 id="题目及解法">题目及解法</h2>
+<h3 id="bitXor">bitXor</h3>
+<ul>
+<li>题目要求：x^y using only ~ and &amp;</li>
+<li>允许操作：<code>~ &amp;</code></li>
+<li>操作数限制：14</li>
+<li>分值：1</li>
+</ul>
+<p>首先知道<code>x ^ y = (x &amp; ~y) | (~x &amp; y)</code>，然后将<code>|</code>用<code>~ &amp;</code>来表示。根据德摩根定律：<code>A|B = ~(~A &amp; ~B)</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">bitXor</span><span class="params">(<span class="type">int</span> x, <span class="type">int</span> y)</span> &#123;</span><br><span class="line">  <span class="type">int</span> A = x &amp; ~y;</span><br><span class="line">  <span class="type">int</span> B = ~x &amp; y;</span><br><span class="line">  <span class="keyword">return</span> ~(~A &amp; ~B);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="tmin">tmin</h3>
+<ul>
+<li>题目要求：return minimum two’s complement integer</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：4</li>
+<li>分值：1</li>
+</ul>
+<p>题目要返回最大的二进制补码，就是最高位为1，其余全为0</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">tmin</span><span class="params">(<span class="type">void</span>)</span> &#123;</span><br><span class="line">  <span class="comment">//return ~__INT32_MAX__;</span></span><br><span class="line">  <span class="keyword">return</span> <span class="number">1</span> &lt;&lt; <span class="number">31</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="isTmax">isTmax</h3>
+<ul>
+<li>题目要求：returns 1 if x is the maximum, two’s complement number, and 0 otherwise</li>
+<li>允许操作：<code>! ~ &amp; ^ | +</code></li>
+<li>操作数限制：10</li>
+<li>分值：1</li>
+</ul>
+<p>让<code>x</code>与最大值作差，最后结果为0则x为最大值<code>return 1</code>，否则<code>return 0</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// -A = ~A + 1 </span></span><br><span class="line"><span class="type">int</span> <span class="title function_">isTmax</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">  <span class="type">int</span> A = __INT32_MAX__;</span><br><span class="line">  <span class="keyword">return</span> !(x + (~A + <span class="number">1</span>));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="allOddBits">allOddBits</h3>
+<ul>
+<li>题目要求：return 1 if all odd-numbered bits in word set to 1 where bits are numbered from 0 (least significant) to 31 (most significant)
+<ul>
+<li>例如：allOddBits(0xFFFFFFFD) = 0, allOddBits(0xAAAAAAAA) = 1</li>
+</ul>
+</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：12</li>
+<li>分值：2</li>
+</ul>
+<p>因为要判断所有奇数位是否全为1，所以我们先构造一个10101010…的标准数，然后让<code>x &amp; MASK</code>得到<code>x</code>所有奇数位的状态，再<code>^ MASK</code>判断是否为0</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">allOddBits</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">  <span class="type">int</span> MASK = <span class="number">0xAA</span> | (<span class="number">0xAA</span> &lt;&lt; <span class="number">8</span>) | (<span class="number">0xAA</span> &lt;&lt; <span class="number">16</span>) | (<span class="number">0xAA</span> &lt;&lt; <span class="number">24</span>);</span><br><span class="line">  <span class="keyword">return</span> !((x &amp; MASK) ^ MASK);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="negate">negate</h3>
+<ul>
+<li>题目要求：return -x
+<ul>
+<li>例如：negate(1) = -1.</li>
+</ul>
+</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：5</li>
+<li>分值：2</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">negate</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">  <span class="keyword">return</span> ~x + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="isAsciiDigit">isAsciiDigit</h3>
+<ul>
+<li>题目要求：return 1 if 0x30 &lt;= x &lt;= 0x39 (ASCII codes for characters ‘0’ to ‘9’)
+<ul>
+<li>例如：isAsciiDigit(0x35) = 1.       isAsciiDigit(0x3a) = 0.</li>
+</ul>
+</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：15</li>
+<li>分值：3</li>
+</ul>
+<p>判断<code>x &gt;= 0x30 &amp;&amp; x &lt;= 0x39</code>，即<code>x - 0x30 &gt;= 0 &amp;&amp; 0x39 - x &gt;= 0</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">isAsciiDigit</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">  <span class="type">int</span> A = <span class="number">0x30</span>,B = <span class="number">0x39</span>;</span><br><span class="line">  <span class="type">int</span> dA = x + (~A + <span class="number">1</span>);</span><br><span class="line">  <span class="type">int</span> dB = B + (~x + <span class="number">1</span>);</span><br><span class="line">    <span class="comment">// 符号位为0说明满足条件</span></span><br><span class="line">  <span class="keyword">return</span> !(dA &gt;&gt; <span class="number">31</span>) &amp; !(dB &gt;&gt; <span class="number">31</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="conditional">conditional</h3>
+<ul>
+<li>题目要求：same as x ? y : z
+<ul>
+<li>例如：conditional(2,4,5) = 4</li>
+</ul>
+</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：16</li>
+<li>分值：3</li>
+</ul>
+<p>这一题稍微有一些复杂，我们来看看怎么去想。因为不能用 if 来做流程判断，所以我们返回的表达式例一定要包含 y 和 z，但是可以根据 x 的值来进行变换，所以大概的式子是 <code>(y op expr) | (z op expr)</code>(op 表示操作符， expr 是某个表达式)。</p>
+<p>然后就简单很多了，我们只要想办法做一个 expr，要么为 <code>0x00000000</code>，要么为 <code>0xffffffff</code> 即可，于是表达式 <code>~!x + 1</code> 就可以满足我们的需求，x 为 0 时，表达式为 <code>0xffffffff</code>，不等于 0 时也满足条件，就等于有了答案</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">conditional</span><span class="params">(<span class="type">int</span> x, <span class="type">int</span> y, <span class="type">int</span> z)</span> &#123;</span><br><span class="line">  <span class="type">int</span> A = ~!x + <span class="number">1</span>;</span><br><span class="line">  <span class="keyword">return</span> (y &amp; ~A) | (z &amp; A);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="isLessOrEqual">isLessOrEqual</h3>
+<ul>
+<li>题目要求：if x &lt;= y  then return 1, else return 0
+<ul>
+<li>例如：isLessOrEqual(4,5) = 1.</li>
+</ul>
+</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：24</li>
+<li>分值：3</li>
+</ul>
+<p>只要判断<code>y - x</code>是否&gt;=0即可</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">isLessOrEqual</span><span class="params">(<span class="type">int</span> x, <span class="type">int</span> y)</span> &#123;</span><br><span class="line">  <span class="type">int</span> A = y + (~x + <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">return</span> !(A &gt;&gt; <span class="number">31</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="logicalNeg">logicalNeg</h3>
+<ul>
+<li>题目要求：不用<code>!</code>实现<code>!</code>
+<ul>
+<li>例如：logicalNeg(3) = 0, logicalNeg(0) = 1</li>
+</ul>
+</li>
+<li>允许操作：<code>~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：12</li>
+<li>分值：4</li>
+</ul>
+<p>思考当<code>x != 0</code>时，结果应该是0，<code>x == 0</code>时，结果应该是1，因为负数和正数结果一样，可以想到将负数转为正数，只要改符号位即可，然后判断符号位即可</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">logicalNeg</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">  <span class="type">int</span> A = (x | (~x + <span class="number">1</span>)) &gt;&gt; <span class="number">31</span>;</span><br><span class="line">  <span class="keyword">return</span> A + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="howManyBits">howManyBits</h3>
+<ul>
+<li>题目要求：return the minimum number of bits required to represent x in two’s complement
+<ul>
+<li>例如：</li>
+<li>howManyBits(12) = 5</li>
+<li>howManyBits(298) = 10</li>
+<li>howManyBits(-5) = 4</li>
+<li>howManyBits(0) = 1</li>
+<li>howManyBits(-1) = 1</li>
+<li>howManyBits(0x80000000) = 32</li>
+</ul>
+</li>
+<li>允许操作：<code>! ~ &amp; ^ | + &lt;&lt; &gt;&gt;</code></li>
+<li>操作数限制：90</li>
+<li>分值：4</li>
+</ul>
+<p>这题从操作数限制的数目来看就知道比较复杂，但是代码还是比较清晰的，直接查看代码中的注释</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">howManyBits</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    <span class="comment">// -----------------------------------------------------------</span></span><br><span class="line">    <span class="comment">// 1. 预处理：统一符号位 (Preparation: Unify Sign Bit)</span></span><br><span class="line">    <span class="comment">// 目标：将 x 转换为非负数 A，使得 x 和 A 所需的最小位数相同。</span></span><br><span class="line">    <span class="comment">// 这将问题简化为查找 A 的最高有效 &#x27;1&#x27; 位的位置。</span></span><br><span class="line">    <span class="comment">// -----------------------------------------------------------</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// s: 符号掩码 (Sign Mask). 如果 x &gt;= 0, s=0x00000000. 如果 x &lt; 0, s=0xFFFFFFFF.</span></span><br><span class="line">    <span class="type">int</span> s = x &gt;&gt; <span class="number">31</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// A = x ^ s</span></span><br><span class="line">    <span class="comment">// 如果 x &gt;= 0 (s=0): A = x ^ 0 = x      (保持 x 不变)</span></span><br><span class="line">    <span class="comment">// 如果 x &lt; 0 (s=-1): A = x ^ 0xFFFFFFFF = ~x (将负数转换为其位非，即其绝对值减 1)</span></span><br><span class="line">    <span class="comment">// 这样 A 就是一个非负数，且其最高有效位反映了 x 所需的位数。</span></span><br><span class="line">    <span class="type">int</span> A = x ^ s; </span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> count = <span class="number">0</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// -----------------------------------------------------------</span></span><br><span class="line">    <span class="comment">// 2. 二分查找：定位最高有效 &#x27;1&#x27; 位的位置 (Binary Search)</span></span><br><span class="line">    <span class="comment">// count 累加的是 MSB (最高有效位) 以下有多少位。</span></span><br><span class="line">    <span class="comment">// -----------------------------------------------------------</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查高 16 位 (Bits 31:16)</span></span><br><span class="line">    <span class="comment">// 如果 A 的高 16 位有 &#x27;1&#x27;，说明 MSB 位置在 [16, 31] 范围内。</span></span><br><span class="line">    count = A &gt;&gt; <span class="number">16</span>;     <span class="comment">// 检查 [31:16] 位是否非零。如果非零，结果是 -1 或正数。</span></span><br><span class="line">    count = !!count;     <span class="comment">// 逻辑非两次：如果非零，结果是 1；如果为 0，结果是 0。</span></span><br><span class="line">    count &lt;&lt;= <span class="number">4</span>;         <span class="comment">// count = 16 (如果 MSB 在 [16, 31] ) 或 0。</span></span><br><span class="line">    A = A &gt;&gt; count;      <span class="comment">// A 右移 16 位 (如果 MSB 在高位) 或 0 位。</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查剩下的 8 位 (如果 MSB 在 [8, 15] 或 [24, 31])</span></span><br><span class="line">    <span class="comment">// A 现在最多只有 16 位。</span></span><br><span class="line">    <span class="type">int</span> temp = A &gt;&gt; <span class="number">8</span>;</span><br><span class="line">    temp = !!temp;       <span class="comment">// temp = 1 (如果 MSB 在 [8, 15] 范围内) 或 0。</span></span><br><span class="line">    temp &lt;&lt;= <span class="number">3</span>;          <span class="comment">// temp = 8 或 0。</span></span><br><span class="line">    count += temp;       <span class="comment">// 累加 8 或 0 到总位数。</span></span><br><span class="line">    A = A &gt;&gt; temp;       <span class="comment">// 右移 8 位或 0 位。</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查剩下的 4 位</span></span><br><span class="line">    <span class="comment">// A 现在最多只有 8 位。</span></span><br><span class="line">    temp = A &gt;&gt; <span class="number">4</span>;</span><br><span class="line">    temp = !!temp;       <span class="comment">// temp = 4 或 0。</span></span><br><span class="line">    temp &lt;&lt;= <span class="number">2</span>;</span><br><span class="line">    count += temp;</span><br><span class="line">    A = A &gt;&gt; temp;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查剩下的 2 位</span></span><br><span class="line">    <span class="comment">// A 现在最多只有 4 位。</span></span><br><span class="line">    temp = A &gt;&gt; <span class="number">2</span>;</span><br><span class="line">    temp = !!temp;       <span class="comment">// temp = 2 或 0。</span></span><br><span class="line">    temp &lt;&lt;= <span class="number">1</span>;</span><br><span class="line">    count += temp;</span><br><span class="line">    A = A &gt;&gt; temp;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查剩下的 1 位</span></span><br><span class="line">    <span class="comment">// A 现在最多只有 2 位 (b1, b0)。</span></span><br><span class="line">    temp = A &gt;&gt; <span class="number">1</span>;</span><br><span class="line">    temp = !!temp;       <span class="comment">// temp = 1 (如果 MSB 在 b1) 或 0。</span></span><br><span class="line">    count += temp;</span><br><span class="line">    A = A &gt;&gt; temp;       <span class="comment">// A 现在只剩下 b0 (MSB 本身的值，0 或 1)。</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">// -----------------------------------------------------------</span></span><br><span class="line">    <span class="comment">// 3. 最终结果计算 (Final Result)</span></span><br><span class="line">    <span class="comment">// -----------------------------------------------------------</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 返回值 = (MSB 以下的位数) + (MSB 本身的值 A，即 0 或 1) + 1 (符号位)</span></span><br><span class="line">    <span class="keyword">return</span> count + A + <span class="number">1</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="floatScale2">floatScale2</h3>
+<ul>
+<li>题目要求：Return bit-level equivalent of expression 2*f
+<ul>
+<li>for floating point argument f.</li>
+<li>Both the argument and result are passed as unsigned int’s, but</li>
+<li>they are to be interpreted as the bit-level representation of</li>
+<li>single-precision floating point values.</li>
+<li>When argument is NaN, return argument</li>
+</ul>
+</li>
+<li>允许操作：Any integer/unsigned operations incl. ||, &amp;&amp;. also if, while</li>
+<li>操作数限制：30</li>
+<li>分值：4</li>
+</ul>
+<p>![](/images/CSAPP_Data Lab_01-1.png)</p>
+<p>接下来步入浮点数谜题，对于<strong>每个问题都需要分为这4种情况进行考虑。</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="title function_">floatScale2</span><span class="params">(<span class="type">unsigned</span> uf)</span> &#123;</span><br><span class="line">    <span class="comment">// 定义常量掩码</span></span><br><span class="line">    <span class="type">unsigned</span> SIGN_MASK = <span class="number">0x80000000</span>;</span><br><span class="line">    <span class="type">unsigned</span> EXP_MASK = <span class="number">0x7F800000</span>;</span><br><span class="line">    <span class="type">unsigned</span> FRAC_MASK = <span class="number">0x007FFFFF</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 1. 提取指数 E</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="built_in">exp</span> = uf &amp; EXP_MASK;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 2. 特殊值/无穷大/NaN 检查 (E = 0xFF)</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">exp</span> == EXP_MASK) &#123;</span><br><span class="line">        <span class="comment">// 对于 NaN (Fraction != 0) 和 +/- Infinity (Fraction = 0)，</span></span><br><span class="line">        <span class="comment">// 乘 2 都保持不变。直接返回原值。</span></span><br><span class="line">        <span class="keyword">return</span> uf;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 3. 非规格化数检查 (E = 0x00)</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">exp</span> == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 如果是非规格化数，乘以 2 相当于将尾数 M 左移 1 位。</span></span><br><span class="line">        <span class="comment">// 尾数 M 左移 1 位</span></span><br><span class="line">        <span class="keyword">return</span> (uf &amp; SIGN_MASK) | (uf &lt;&lt; <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 4. 规格化数处理 (0 &lt; E &lt; 0xFF)</span></span><br><span class="line">    <span class="comment">// 只需要将指数 E 加 1。</span></span><br><span class="line">    <span class="type">unsigned</span> EXP_INC = <span class="number">1</span> &lt;&lt; <span class="number">23</span>; </span><br><span class="line">  </span><br><span class="line">    <span class="type">unsigned</span> scaled_uf = uf + EXP_INC;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> scaled_uf;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="floatFloat2Int">floatFloat2Int</h3>
+<ul>
+<li>题目要求：Return bit-level equivalent of expression (int) f
+<ul>
+<li>for floating point argument f.</li>
+<li>Argument is passed as unsigned int, but</li>
+<li>it is to be interpreted as the bit-level representation of a</li>
+<li>single-precision floating point value.</li>
+<li>Anything out of range (including NaN and infinity) should return</li>
+<li>0x80000000u.</li>
+</ul>
+</li>
+<li>允许操作：<code>Any integer/unsigned operations incl. ||, &amp;&amp;. also if, while</code></li>
+<li>操作数限制：30</li>
+<li>分值：4</li>
+</ul>
+<p>当exp位为全1的情况，也就是infinity/NaN，按照题目要求返回0x80000000u</p>
+<p>当exp位为0的情况，也就是非规格化数，0.xxxxx * 2^(-126)，一定是小数，直接return 0即可</p>
+<p>其他情况，也就是规格化数，此时如果<code>E &gt; 31</code>，会溢出成infinity，如果<code>E &lt; 0</code>，说明当前值是1.几乘上一个分数，一定是小数，直接return 0</p>
+<p>我们把frac当做最终答案，先把隐式1加上，此时frac等价于1.M左移23位得到的结果，因此当<code>E &gt;= 23</code>时，我们还需要再左移<code>E - 23</code>位，反之右移<code>23 - E</code>位，最终答案为frac/-frac，根据符号位判断</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">floatFloat2Int</span><span class="params">(<span class="type">unsigned</span> uf)</span> &#123;</span><br><span class="line">  <span class="comment">// 定义常量掩码</span></span><br><span class="line">  <span class="type">unsigned</span> s = (uf &gt;&gt; <span class="number">31</span>) &amp; (<span class="number">0x1</span>);</span><br><span class="line">  <span class="type">unsigned</span> <span class="built_in">exp</span> = (uf &gt;&gt; <span class="number">23</span>) &amp; (<span class="number">0xFF</span>);</span><br><span class="line">  <span class="type">unsigned</span> frac = (uf &amp; <span class="number">0x7FFFFF</span>);</span><br><span class="line"></span><br><span class="line">  <span class="comment">// 1. 特殊值/无穷大/NaN 检查 (E = 0xFF)</span></span><br><span class="line">  <span class="keyword">if</span> (<span class="built_in">exp</span> == <span class="number">0xFF</span>) &#123;</span><br><span class="line">        <span class="comment">// 对于 NaN (Fraction != 0) 和 +/- Infinity (Fraction = 0)，</span></span><br><span class="line">        <span class="comment">// 直接返回0x80000000u。</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span> &lt;&lt; <span class="number">31</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 2. 非规格化数检查 (E = 0x00)</span></span><br><span class="line">    <span class="keyword">if</span> (<span class="built_in">exp</span> == <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="comment">// 如果是非规格化数，相当于尾数 M x (2 ^ -126)。</span></span><br><span class="line">        <span class="comment">// 应该直接return 0；</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 3. 规格化数检查</span></span><br><span class="line">    <span class="comment">// 此时 M = 1.xxxxxxx</span></span><br><span class="line">    <span class="type">int</span> E = <span class="built_in">exp</span> - <span class="number">127</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 加上隐式 1</span></span><br><span class="line">    frac = frac | (<span class="number">1</span> &lt;&lt; <span class="number">23</span>);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(E &gt; <span class="number">31</span>)&#123;</span><br><span class="line">        <span class="comment">// E &gt; 31，会被爆掉</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">1</span> &lt;&lt; <span class="number">31</span>;   </span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(E &lt; <span class="number">0</span>)&#123;</span><br><span class="line">        <span class="comment">// E &lt; 0 ，会变成0.xxxx</span></span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(E &gt;= <span class="number">23</span>)&#123;</span><br><span class="line">      <span class="comment">// 已经移了23位</span></span><br><span class="line">      frac &lt;&lt;= (E - <span class="number">23</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span>&#123;</span><br><span class="line">      frac &gt;&gt;= (<span class="number">23</span> - E);</span><br><span class="line">    &#125;</span><br><span class="line">  </span><br><span class="line">    <span class="keyword">if</span>(s)&#123;</span><br><span class="line">      <span class="keyword">return</span> ~frac + <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> frac;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="floatPower2">floatPower2</h3>
+<ul>
+<li>题目要求：Return bit-level equivalent of the expression 2.0^x
+<ul>
+<li>(2.0 raised to the power x) for any 32-bit integer x.</li>
+<li>The unsigned value that is returned should have the identical bit</li>
+<li>representation as the single-precision floating-point number 2.0^x.</li>
+<li>If the result is too small to be represented as a denorm, return 0.</li>
+<li>If too large, return +INF.</li>
+</ul>
+</li>
+<li>允许操作：<code>Any integer/unsigned operations incl. ||, &amp;&amp;. Also if, while</code></li>
+<li>操作数限制：30</li>
+<li>分值：4</li>
+</ul>
+<p>![](/images/CSAPP_Data Lab_01-2.png)</p>
+<p>找出这四个范围后即可分类讨论<br>
+$$<br>
+(-1)^s<em>M</em>2^{E-bias}<br>
+$$</p>
+<p>$$<br>
+E - bias = x<br>
+$$</p>
+<p>$$<br>
+E = x + bias<br>
+$$</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="title function_">floatPower2</span><span class="params">(<span class="type">int</span> x)</span> &#123;</span><br><span class="line">    <span class="comment">// int E = x + 127;</span></span><br><span class="line">    <span class="comment">// if(E &gt; 254)&#123;</span></span><br><span class="line">    <span class="comment">//   return 0x7F800000;</span></span><br><span class="line">    <span class="comment">// &#125;</span></span><br><span class="line">    <span class="comment">// else if(E &lt;= 0)&#123;</span></span><br><span class="line">    <span class="comment">//   return 0;</span></span><br><span class="line">    <span class="comment">// &#125;</span></span><br><span class="line">    <span class="comment">// else&#123;</span></span><br><span class="line">    <span class="comment">//   return E &lt;&lt; 23;</span></span><br><span class="line">    <span class="comment">// &#125;</span></span><br><span class="line"></span><br><span class="line">    <span class="type">int</span> E = x + <span class="number">127</span>;</span><br><span class="line">    <span class="comment">// 此时32位无法表示这么小的数，直接return 0</span></span><br><span class="line">    <span class="keyword">if</span>(x &lt; <span class="number">-149</span>)&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 此时是非规格化数，</span></span><br><span class="line">    <span class="comment">// 需要找到0.M x 2^(-126) = 2^x 中的 M</span></span><br><span class="line">    <span class="comment">// 0.M = 2^(x + 126)</span></span><br><span class="line">    	<span class="comment">// 为什么是(k - 23)? 因为 M 中第0位对应的是2^(-23)，所以需要反一下</span></span><br><span class="line">    <span class="comment">// 因为 0.M 本身是2 ^ (k - 23)，这个k就是该补1的位置</span></span><br><span class="line">    <span class="comment">// k - 23 = x + 126</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(x &lt; <span class="number">-126</span>)&#123;</span><br><span class="line">      <span class="type">int</span> shift = <span class="number">23</span> + (x + <span class="number">126</span>);</span><br><span class="line">      <span class="keyword">return</span> <span class="number">1</span> &lt;&lt; shift;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 此时是规格化数</span></span><br><span class="line">    <span class="comment">// 直接将对应 E 位置补1</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span>(x &lt;= <span class="number">127</span>)&#123;</span><br><span class="line">      <span class="keyword">return</span> E &lt;&lt; <span class="number">23</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 此时是infinity</span></span><br><span class="line">    <span class="keyword">else</span>&#123;</span><br><span class="line">      <span class="keyword">return</span> <span class="number">0xFF</span> &lt;&lt; <span class="number">23</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="Reference">Reference</h2>
+<p><a target="_blank" rel="noopener" href="https://www.wdxtub.com/blog/csapp/thick-csapp-lab-1">【读厚 CSAPP】I Data Lab</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV183411k7VM?spm_id_from=333.788.videopod.episodes&amp;vd_source=45969ff01860bc95fba0d98baab7b336">【深入理解计算机系统 实验1 CSAPP】datalab + 环境搭建 data lab</a></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://taffy128.github.io/">lzx</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://taffy128.github.io/2025/12/06/CSAPP-DataLab-01/">https://taffy128.github.io/2025/12/06/CSAPP-DataLab-01/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://taffy128.github.io" target="_blank">lzx's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/C-%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">C++学习笔记</a></div><div class="post-share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2025/11/28/6-S081-Lecture-Notes/" title="6.S081_Lecture Notes"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">6.S081_Lecture Notes</div></div><div class="info-2"><div class="info-item-1">6.S081_Lecture Notes 课程网址：https://pdos.csail.mit.edu/6.S081/2020/index.html Lecture 1 Introduction 操作系统应该提供的功能：1. 多进程支持 2. 进程间隔离 3. 受控制的进程间通信  xv6：一种在本课程中使用的类UNIX的教学操作系统，运行在RISC-V指令集处理器上，本课程中将使用QEMU模拟器代替 kernel(内核)：为运行的程序提供服务的一种特殊程序。每个运行着的程序叫做进程，每个进程的内存中存储指令、数据和堆栈。一个计算机可以拥有多个进程，但是只能有一个内核  每当进程需要调用内核时，它会触发一个system call（系统调用），system call进入内核执行相应的服务然后返回。   shell：一个普通的程序，其功能是让用户输入命令并执行它们，shell不是内核的一部分  1.1 Processes and...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2025/09/13/6-S081-Lab0-Environment-Setup/" title="6.S081_Lab0_Environment Setup"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-13</div><div class="info-item-2">6.S081_Lab0_Environment Setup</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab0_Environment Setup 写在前面 本文旨在为 MIT 6.S081: Operating System Engineering (RISC-V 版本) 的学习者提供一份完整、详尽的开发与调试环境搭建步骤。一个配置完善的环境是高效完成课程实验、深入理解操作系统内核的关键。本教程将引导你完成从安装工具链到配置图形化调试环境的全过程。 第一部分：基础概念 在开始配置前，理解以下几个核心概念，有助于清晰地认识整个开发与调试工作流。 1.1. 宿主机 (Host) 与客户机 (Guest) 整个开发过程涉及两个相互独立的系统环境：  宿主操作系统 (Host OS)：这是你用于开发和编译的系统，通常是一个 Linux 发行版（如 Ubuntu）。所有的开发工具，包括编译器、模拟器和调试器，都安装并运行在宿主机上。 客户操作系统 (Guest OS)：这是你正在学习和开发的操作系统，即 xv6。它运行在由模拟器创建的独立虚拟环境中。  1.2. QEMU 的角色 QEMU 是一个开源的系统模拟器。在本课程中，它的作用是提供一个完整的、软件模拟的...</div></div></div></a><a class="pagination-related" href="/2025/09/13/6-S081-Lab2-System-calls/" title="6.S081_Lab2_System calls"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-13</div><div class="info-item-2">6.S081_Lab2_System calls</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab2_System calls 写在前面 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab2地址 课程首页 0.Makefile 每个任务完成之后需要在Makefile中添加对应的信息才能运行 在UPROGS项下添加以下内容： 12$U/_trace\$U/_sysinfotest\ 1.System call tracing 要求：trace [tracing_mask] [command] 要求当调用了给定的tracing mask所对应的system call时，打印输出调用该system call的进程PID、system call的名称、system call的返回值。已经给出了user...</div></div></div></a><a class="pagination-related" href="/2025/11/28/6-S081-Lab10-Mmap/" title="6.S081_Lab10_Mmap"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-11-28</div><div class="info-item-2">6.S081_Lab10_Mmap</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab10_Mmap 写在前面 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab10地址 课程首页 Lab10 核心数据结构 实现 mmap 的核心数据结构是 Linux 中的 vm_area_struct，下面是 CSAPP 的经典好图：  start 和 end 是一个左闭右开的区间，即 [start, end) 在 Linux 内核中，VMA 是通过红黑树以起始地址为关键字来实现快速增删改查的，在这个 Lab 实现中，我就用单链表来把 VMA 串一起就行了，因此 struct vma 的定义如下： 123456789struct vma &#123;  uint64 start;  uint64 end;  int prot;  int flags;...</div></div></div></a><a class="pagination-related" href="/2025/09/27/6-S081-Lab4-Traps/" title="6.S081_Lab4_Traps"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-27</div><div class="info-item-2">6.S081_Lab4_Traps</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab4_Traps 写在前面 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab4地址 课程首页 1.RISC-V assembly 要求：使用make fs.img编译，得到user/call.asm文件，通过阅读call.asm，了解g、f和main函数，并回答以下问题   Which registers contain arguments to functions? For example, which register holds 13 in main’s call to printf? a1 里存 12（第一个参数），a2 里存 13（第二个参数），a1、a2 包含函数参数。    Where is the call to function f...</div></div></div></a><a class="pagination-related" href="/2025/09/13/6-S081-Lab1-Unix-Utilities/" title="6.S081_Lab1_Unix Utilities"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-13</div><div class="info-item-2">6.S081_Lab1_Unix Utilities</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab1_Unix Utilities 写在前面 这是本课程第一次正式Lab，自行完成需要耗费一定的时间 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab1地址 课程首页 0.Makefile 每个任务完成之后需要在Makefile中添加对应的信息才能运行 在UPROGS项下添加以下内容： 12345$U/_sleep\$U/_pingpong\$U/_primes\$U/_find\$U/_xargs\ 1.Sleep 通过sleep系统调用来实现休眠一定时间，注意如果没有传入参数，程序需要打印错误信息 1234567891011#include &quot;kernel/types.h&quot;#include...</div></div></div></a><a class="pagination-related" href="/2025/09/20/6-S081-Lab3-page-tables/" title="6.S081_Lab3_page tables"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2025-09-20</div><div class="info-item-2">6.S081_Lab3_page tables</div></div><div class="info-2"><div class="info-item-1">6.S081_Lab3_page tables 写在前面 如果一行代码都还没有写，不知道完全要在哪里写，写什么东西，说明是对xv6的相关机制不懂，继续反复阅读xv6book 如果是写了一些代码，但是运行不起来，或者运行情况与预期不符，可以尝试询问AI或者用gdb逐行调试 如果已经花费了超额时间（例如easy题目仅做题时间超过1.5h），可以尝试阅读别人的源码，但是一定不要边看边写，要彻底看懂后自己完整的敲出来 Lab3地址 课程首页 1.Speed up system calls 要求：通过在内核与用户空间之间共享一个只读内存页来加速getpid()系统调用，具体做法是在创建进程时分配一个物理页、存入PID，然后将其以只读方式映射到用户虚拟地址USYSCALL，并在进程退出时释放它，从而让用户程序可以直接从内存读取PID，避免陷入内核。 这个 task 的难点在于，你应该把 map page 这段代码放在哪里最合适？Lab 文档里说的是 When each process is created，具体是什么时候呢？是放在 fork 的地方，还是放在 allocproc...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">lzx</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">23</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">1</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">4</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Taffy128"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons"><a class="social-icon" href="https://github.com/Taffy128" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:yyangguangnanhai9@gmail.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BB%BB%E5%8A%A1%E7%9B%AE%E6%A0%87"><span class="toc-number">1.</span> <span class="toc-text">任务目标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%8A%E6%89%8B%E6%8C%87%E5%8D%97"><span class="toc-number">2.</span> <span class="toc-text">上手指南</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A2%98%E7%9B%AE%E5%8F%8A%E8%A7%A3%E6%B3%95"><span class="toc-number">3.</span> <span class="toc-text">题目及解法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#bitXor"><span class="toc-number">3.1.</span> <span class="toc-text">bitXor</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tmin"><span class="toc-number">3.2.</span> <span class="toc-text">tmin</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isTmax"><span class="toc-number">3.3.</span> <span class="toc-text">isTmax</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#allOddBits"><span class="toc-number">3.4.</span> <span class="toc-text">allOddBits</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#negate"><span class="toc-number">3.5.</span> <span class="toc-text">negate</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isAsciiDigit"><span class="toc-number">3.6.</span> <span class="toc-text">isAsciiDigit</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#conditional"><span class="toc-number">3.7.</span> <span class="toc-text">conditional</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isLessOrEqual"><span class="toc-number">3.8.</span> <span class="toc-text">isLessOrEqual</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#logicalNeg"><span class="toc-number">3.9.</span> <span class="toc-text">logicalNeg</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#howManyBits"><span class="toc-number">3.10.</span> <span class="toc-text">howManyBits</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#floatScale2"><span class="toc-number">3.11.</span> <span class="toc-text">floatScale2</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#floatFloat2Int"><span class="toc-number">3.12.</span> <span class="toc-text">floatFloat2Int</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#floatPower2"><span class="toc-number">3.13.</span> <span class="toc-text">floatPower2</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Reference"><span class="toc-number">4.</span> <span class="toc-text">Reference</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/12/06/CSAPP-DataLab-01/" title="CSAPP_DataLab_01">CSAPP_DataLab_01</a><time datetime="2025-12-06T10:07:38.766Z" title="发表于 2025-12-06 18:07:38">2025-12-06</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/11/28/6-S081-Lecture-Notes/" title="6.S081_Lecture Notes">6.S081_Lecture Notes</a><time datetime="2025-11-28T10:45:48.815Z" title="发表于 2025-11-28 18:45:48">2025-11-28</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/11/28/6-S081-Lab10-Mmap/" title="6.S081_Lab10_Mmap">6.S081_Lab10_Mmap</a><time datetime="2025-11-28T10:43:14.371Z" title="发表于 2025-11-28 18:43:14">2025-11-28</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/11/26/6-S081-Lab9-File-system/" title="6.S081_Lab9_File system">6.S081_Lab9_File system</a><time datetime="2025-11-26T12:18:38.190Z" title="发表于 2025-11-26 20:18:38">2025-11-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2025/11/24/6-S081-Lab8-locks/" title="6.S081_Lab8_locks">6.S081_Lab8_locks</a><time datetime="2025-11-24T14:30:04.484Z" title="发表于 2025-11-24 22:30:04">2025-11-24</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2025 By lzx</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.3.5</a></div><div class="footer_custom_text">Hi, welcome to my blog!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="translateLink" type="button" title="简繁转换">繁</button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="/js/tw_cn.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
